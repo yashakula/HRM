@@ -61,17 +61,18 @@ All other features—payroll, performance management, analytics, integrations—
 
 | ID    | User Story                                                                                                       | Acceptance Criteria                                                                                               |
 |-------|-------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
-| US-10 | As a Supervisor, I want to view employees under my assignments so that I can manage their leave and attendance.   | Dashboard filters tasks by assignments. Lists supervisee names and pending tasks.                                 |
-| US-06 | As a Supervisor, I want to approve or reject leave requests for my supervisees so that leave is managed properly. | Dashboard shows only my supervisees’ requests. Status updates and notifications function correctly.               |
-| US-12 | As a Supervisor, I want to view attendance records for my supervisees so that I can monitor their working hours. | Attendance table is filtered to my supervisees, showing dates and total hours.                                   |
+| US-10 | As a Supervisor, I want to view employees reporting to me, search and add employees under my supervision, and remove them when necessary. | Dashboard lists employees reporting to me<br>Search by name or employee ID<br>Add and remove supervisees with changes saved successfully |
+| US-06 | As a Supervisor, I want to approve or reject leave requests for my supervisees so that leave is managed properly. | Dashboard shows only my supervisees’ requests<br>Status updates and notifications function correctly |
+| US-12 | As a Supervisor, I want to view attendance records for my supervisees so that I can monitor their working hours. | Attendance table is filtered to my supervisees, showing dates and total hours. |
 
-### 4.3 Employee
+### 4.3 Employee Employee
 
 | ID    | User Story                                                                                                       | Acceptance Criteria                                                                                               |
 |-------|-------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
 | US-05 | As an Employee, I want to submit a leave request so that I can schedule time off.                                 | Request captures assignment context, dates, and reason. Confirmation message is displayed.                        |
 | US-07 | As an Employee, I want to track the status of my leave requests so that I know when my time off is approved.     | Leave history displays each request with its current status.                                                      |
 | US-08 | As an Employee, I want to log my attendance so that my working hours are recorded accurately.                     | Check-in and check-out buttons record timestamps correctly.                                                       |
+| US-16 | As an Employee, I want to manage my personal information (email, bank details, SSN) so that my profile is complete. | Form captures personal email, bank details, SSN securely<br>Validation for format and confidentiality ensured |
 
 ## 5. Acceptance Criteria
 - Responsive and accessible forms and dashboards.
