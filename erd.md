@@ -1,6 +1,6 @@
 ```mermaid
 
-erDiagram
+eerDiagram
     PEOPLE {
         int         people_id PK
         string      full_name
@@ -51,8 +51,8 @@ erDiagram
     LEAVE_REQUEST {
         int         leave_id PK
         int         assignment_id FK
-        date        start_date
-        date        end_date
+        date        start_date       "leave begins"
+        date        end_date         "leave ends"
         text        reason
         enum        status           "Pending, Approved, Rejected"
         datetime    submitted_at
