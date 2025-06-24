@@ -1,5 +1,9 @@
 import pytest
+import os
 from tests.integration.conftest import IntegrationTestClient
+
+# Allow disabling the redundant search tests
+ENABLE_OLD_SEARCH_TESTS = os.getenv("ENABLE_OLD_SEARCH_INTEGRATION_TESTS", "false").lower() == "true"
 
 
 class TestEmployeeIntegration:
@@ -223,3 +227,204 @@ class TestEmployeeIntegrationPermissions:
         view_response = integration_client.get(f"/api/v1/employees/{employee_id}")
         assert view_response.status_code == 200
         assert view_response.json()["person"]["full_name"] == "Cross Role Test Employee"
+
+
+@pytest.mark.skipif(
+    not ENABLE_OLD_SEARCH_TESTS,
+    reason="Old search integration tests disabled (set ENABLE_OLD_SEARCH_INTEGRATION_TESTS=true to enable)"
+)
+class TestEmployeeSearchIntegration:
+    """Integration tests for US-02: Search and view employee records"""
+    
+    def setup_test_employees(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Create test employees for search testing"""
+        test_employees = [
+            {"person": {"full_name": "Alice Johnson"}},
+            {"person": {"full_name": "Bob Smith"}},
+            {"person": {"full_name": "Charlie Brown"}},
+            {"person": {"full_name": "Diana Wilson"}},
+            {"person": {"full_name": "Edward Davis"}}
+        ]
+        
+        created_employees = []
+        for emp_data in test_employees:
+            response = integration_client.post("/api/v1/employees/", json=emp_data)
+            assert response.status_code == 200
+            created_employees.append(response.json())
+        
+        return created_employees
+    
+    def test_search_by_name_exact_match(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test searching by exact name match"""
+        employees = self.setup_test_employees(integration_client, authenticated_hr_admin)
+        
+        response = integration_client.get("/api/v1/employees/search?name=Alice Johnson")
+        assert response.status_code == 200
+        
+        results = response.json()
+        assert len(results) == 1
+        assert results[0]["person"]["full_name"] == "Alice Johnson"
+    
+    def test_search_by_name_partial_match(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test searching by partial name match"""
+        employees = self.setup_test_employees(integration_client, authenticated_hr_admin)
+        
+        response = integration_client.get("/api/v1/employees/search?name=Johnson")
+        assert response.status_code == 200
+        
+        results = response.json()
+        assert len(results) >= 1
+        assert any("Johnson" in emp["person"]["full_name"] for emp in results)
+    
+    def test_search_by_employee_id(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test searching by employee ID"""
+        employees = self.setup_test_employees(integration_client, authenticated_hr_admin)
+        target_employee = employees[0]
+        employee_id = target_employee["employee_id"]
+        
+        response = integration_client.get(f"/api/v1/employees/search?employee_id={employee_id}")
+        assert response.status_code == 200
+        
+        results = response.json()
+        assert len(results) == 1
+        assert results[0]["employee_id"] == employee_id
+        assert results[0]["person"]["full_name"] == target_employee["person"]["full_name"]
+    
+    def test_search_by_status_active(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test searching by employee status (Active)"""
+        employees = self.setup_test_employees(integration_client, authenticated_hr_admin)
+        
+        response = integration_client.get("/api/v1/employees/search?status=Active")
+        assert response.status_code == 200
+        
+        results = response.json()
+        assert len(results) >= 5  # All created employees should be active
+        assert all(emp["status"] in ["ACTIVE", "Active"] for emp in results)
+    
+    def test_search_no_results(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test search that returns no results"""
+        self.setup_test_employees(integration_client, authenticated_hr_admin)
+        
+        response = integration_client.get("/api/v1/employees/search?name=NonExistentEmployee")
+        assert response.status_code == 200
+        
+        results = response.json()
+        assert len(results) == 0
+    
+    def test_search_with_pagination(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test search with pagination parameters"""
+        self.setup_test_employees(integration_client, authenticated_hr_admin)
+        
+        # Test with limit
+        response = integration_client.get("/api/v1/employees/search?limit=3")
+        assert response.status_code == 200
+        
+        results = response.json()
+        assert len(results) <= 3
+        
+        # Test with skip and limit
+        response = integration_client.get("/api/v1/employees/search?skip=2&limit=2")
+        assert response.status_code == 200
+        
+        results = response.json()
+        assert len(results) <= 2
+    
+    def test_search_invalid_parameters(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test search with invalid parameters"""
+        # Test invalid employee_id (non-integer)
+        response = integration_client.get("/api/v1/employees/search?employee_id=invalid")
+        assert response.status_code == 422  # Validation error
+        
+        # Test invalid status
+        response = integration_client.get("/api/v1/employees/search?status=InvalidStatus")
+        assert response.status_code == 422  # Validation error
+        
+        # Test negative skip
+        response = integration_client.get("/api/v1/employees/search?skip=-1")
+        assert response.status_code == 422  # Validation error
+        
+        # Test limit too high
+        response = integration_client.get("/api/v1/employees/search?limit=2000")
+        assert response.status_code == 422  # Validation error
+    
+    def test_search_unauthenticated(self, integration_client: IntegrationTestClient):
+        """Test that unauthenticated users cannot search"""
+        response = integration_client.get("/api/v1/employees/search?name=John")
+        assert response.status_code == 401
+        assert "Not authenticated" in response.json()["detail"]
+    
+    def test_search_as_supervisor(self, integration_client: IntegrationTestClient, authenticated_supervisor):
+        """Test search functionality as supervisor role"""
+        # Create test data first as HR Admin
+        import uuid
+        hr_unique_id = str(uuid.uuid4())[:8]
+        hr_admin_data = {
+            "username": f"hr_admin_search_{hr_unique_id}",
+            "email": f"hr_admin_search_{hr_unique_id}@example.com", 
+            "password": "testpassword123",
+            "role": "HR_ADMIN"
+        }
+        
+        # Register and login HR Admin temporarily to create test data
+        register_response = integration_client.post("/api/v1/auth/register", json=hr_admin_data)
+        assert register_response.status_code == 200
+        
+        login_data = {"username": hr_admin_data["username"], "password": hr_admin_data["password"]}
+        login_response = integration_client.post("/api/v1/auth/login", json=login_data)
+        assert login_response.status_code == 200
+        
+        # Create test employee
+        employee_data = {"person": {"full_name": "Supervisor Search Test"}}
+        create_response = integration_client.post("/api/v1/employees/", json=employee_data)
+        assert create_response.status_code == 200
+        
+        # Logout HR Admin
+        logout_response = integration_client.post("/api/v1/auth/logout")
+        assert logout_response.status_code == 200
+        
+        # Login as supervisor (provided by authenticated_supervisor fixture)
+        # Test search functionality
+        response = integration_client.get("/api/v1/employees/search?name=Supervisor Search Test")
+        assert response.status_code == 200
+        
+        results = response.json()
+        assert len(results) >= 1
+        assert any("Supervisor Search Test" in emp["person"]["full_name"] for emp in results)
+    
+    def test_search_as_employee(self, integration_client: IntegrationTestClient, authenticated_employee):
+        """Test search functionality as employee role"""
+        # Similar to supervisor test but using employee role
+        import uuid
+        hr_unique_id = str(uuid.uuid4())[:8]
+        hr_admin_data = {
+            "username": f"hr_admin_emp_search_{hr_unique_id}",
+            "email": f"hr_admin_emp_search_{hr_unique_id}@example.com",
+            "password": "testpassword123", 
+            "role": "HR_ADMIN"
+        }
+        
+        # Register and login HR Admin temporarily to create test data
+        register_response = integration_client.post("/api/v1/auth/register", json=hr_admin_data)
+        assert register_response.status_code == 200
+        
+        login_data = {"username": hr_admin_data["username"], "password": hr_admin_data["password"]}
+        login_response = integration_client.post("/api/v1/auth/login", json=login_data)
+        assert login_response.status_code == 200
+        
+        # Create test employee
+        employee_data = {"person": {"full_name": "Employee Search Test"}}
+        create_response = integration_client.post("/api/v1/employees/", json=employee_data)
+        assert create_response.status_code == 200
+        
+        # Logout HR Admin
+        logout_response = integration_client.post("/api/v1/auth/logout")
+        assert logout_response.status_code == 200
+        
+        # Login as employee (provided by authenticated_employee fixture)
+        # Test search functionality
+        response = integration_client.get("/api/v1/employees/search?name=Employee Search Test")
+        assert response.status_code == 200
+        
+        results = response.json()
+        assert len(results) >= 1
+        assert any("Employee Search Test" in emp["person"]["full_name"] for emp in results)

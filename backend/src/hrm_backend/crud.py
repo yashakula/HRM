@@ -53,4 +53,35 @@ def get_employee(db: Session, employee_id: int):
 
 def get_employees(db: Session, skip: int = 0, limit: int = 100):
     """Get list of employees"""
-    return db.query(models.Employee).offset(skip).limit(limit).all()
+    return db.query(models.Employee)\
+        .options(
+            joinedload(models.Employee.person)\
+            .joinedload(models.People.personal_information)
+        )\
+        .offset(skip).limit(limit).all()
+
+def search_employees(db: Session, search_params: schemas.EmployeeSearchParams):
+    """Search employees by name, employee ID, or status"""
+    query = db.query(models.Employee)\
+        .join(models.People)\
+        .options(
+            joinedload(models.Employee.person)\
+            .joinedload(models.People.personal_information)
+        )
+    
+    # Filter by name (search in full_name)
+    if search_params.name:
+        query = query.filter(
+            models.People.full_name.ilike(f"%{search_params.name}%")
+        )
+    
+    # Filter by employee ID
+    if search_params.employee_id:
+        query = query.filter(models.Employee.employee_id == search_params.employee_id)
+    
+    # Filter by status
+    if search_params.status:
+        query = query.filter(models.Employee.status == search_params.status)
+    
+    # Apply pagination
+    return query.offset(search_params.skip).limit(search_params.limit).all()

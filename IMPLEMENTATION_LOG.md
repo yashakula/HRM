@@ -144,9 +144,100 @@
 
 ## Next User Stories to Implement
 
-### US-02: Search and View Employee Records
-- **Status**: Not started
-- **Dependencies**: None (US-01 complete)
+### ✅ US-02: Search and View Employee Records (COMPLETED)
+
+**Implementation Date**: 2025-06-24
+
+**Original Requirements:**
+- Search by name or employee ID  
+- List displays name, department, and status
+- Role-based views for HR Admin, Supervisors, and Employees
+
+**Actual Implementation:**
+- **API Endpoint**: `GET /api/v1/employees/search`
+- **Search Parameters**:
+  - `name` (optional): Search by employee full name (case-insensitive partial match)
+  - `employee_id` (optional): Search by specific employee ID
+  - `status` (optional): Filter by employee status (Active/Inactive)
+  - `skip` (optional): Pagination offset (default: 0)
+  - `limit` (optional): Maximum results per page (default: 100, max: 1000)
+
+**Search Features:**
+1. **Flexible Search**: Supports partial name matching using ILIKE for case-insensitive searches
+2. **Multiple Filters**: Can combine name, employee_id, and status filters
+3. **Pagination**: Built-in pagination with skip/limit parameters
+4. **Role-Based Access**: All authenticated users can search (HR_ADMIN, SUPERVISOR, EMPLOYEE)
+5. **Rich Data Response**: Returns full employee details including personal information
+
+**API Examples:**
+```bash
+# Search by name
+GET /api/v1/employees/search?name=John
+
+# Search by employee ID
+GET /api/v1/employees/search?employee_id=123
+
+# Filter by status
+GET /api/v1/employees/search?status=Active
+
+# Combined search with pagination
+GET /api/v1/employees/search?name=Smith&status=Active&limit=10&skip=0
+```
+
+**Response Format:**
+```json
+[
+  {
+    "employee_id": 1,
+    "people_id": 1,
+    "status": "Active",
+    "work_email": "john.smith@company.com",
+    "effective_start_date": "2024-01-01",
+    "person": {
+      "people_id": 1,
+      "full_name": "John Smith",
+      "date_of_birth": "1990-05-15",
+      "personal_information": {
+        "personal_email": "john@personal.com",
+        "ssn": "***-**-****",
+        "bank_account": "****"
+      }
+    }
+  }
+]
+```
+
+**Changes from Original Requirements:**
+1. **Enhanced Search Capability**: Beyond name/ID search, added status filtering and pagination
+2. **Department Display**: Currently shows employee status; department will be available after US-13/US-14 implementation
+3. **Rich Response**: Returns complete employee data, not just summary fields
+4. **Universal Access**: All authenticated users can search (matches wireframe design)
+
+**Technical Implementation:**
+- FastAPI Query parameters with validation
+- SQLAlchemy ILIKE queries for case-insensitive partial matching
+- Pydantic schema for search parameters with validation
+- Proper eager loading to prevent N+1 queries
+- FastAPI route ordering (search before /{employee_id} to prevent conflicts)
+
+**Testing Coverage:**
+- ✅ **Unit Tests** (9 tests): Search by name (exact/partial), employee ID, status, pagination, role-based access
+- ✅ **Integration Tests** (12 tests): Real HTTP tests with various search scenarios, validation errors, cross-role access
+- ✅ Authentication requirement testing (401 for unauthenticated)
+- ✅ Input validation testing (422 for invalid parameters)
+- ✅ Empty result handling
+- ✅ All three user roles can search successfully
+
+**Database Query Optimization:**
+- Uses `joinedload` for efficient eager loading of related data
+- Single query execution with proper JOIN relationships
+- Indexed searches on employee_id and status fields
+
+**Future Enhancements:**
+- Department search after US-13 implementation
+- Advanced filters (date ranges, employment status)
+- Search result sorting options
+- Full-text search capabilities
 
 ### US-13: Define Assignments (Department/Role Management)
 - **Status**: Not started  

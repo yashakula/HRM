@@ -144,3 +144,55 @@ def authenticated_employee(integration_client: IntegrationTestClient):
     assert login_response.status_code == 200, f"Login failed: {login_response.text}"
     
     return user_data
+
+
+# Seed data fixtures - use pre-created seed users
+@pytest.fixture(scope="function")
+def seed_hr_admin(integration_client: IntegrationTestClient):
+    """Authenticate using seed HR Admin user"""
+    from hrm_backend.seed_data import get_seed_user_credentials
+    
+    credentials = get_seed_user_credentials("hr_admin")
+    if not credentials:
+        pytest.skip("Seed data not available")
+    
+    # Login with seed user
+    login_response = integration_client.post("/api/v1/auth/login", json=credentials)
+    if login_response.status_code != 200:
+        pytest.skip(f"Seed user login failed: {login_response.text}")
+    
+    return credentials
+
+
+@pytest.fixture(scope="function") 
+def seed_supervisor(integration_client: IntegrationTestClient):
+    """Authenticate using seed Supervisor user"""
+    from hrm_backend.seed_data import get_seed_user_credentials
+    
+    credentials = get_seed_user_credentials("supervisor1")
+    if not credentials:
+        pytest.skip("Seed data not available")
+    
+    # Login with seed user
+    login_response = integration_client.post("/api/v1/auth/login", json=credentials)
+    if login_response.status_code != 200:
+        pytest.skip(f"Seed user login failed: {login_response.text}")
+    
+    return credentials
+
+
+@pytest.fixture(scope="function")
+def seed_employee(integration_client: IntegrationTestClient):
+    """Authenticate using seed Employee user"""
+    from hrm_backend.seed_data import get_seed_user_credentials
+    
+    credentials = get_seed_user_credentials("employee1")
+    if not credentials:
+        pytest.skip("Seed data not available")
+    
+    # Login with seed user
+    login_response = integration_client.post("/api/v1/auth/login", json=credentials)
+    if login_response.status_code != 200:
+        pytest.skip(f"Seed user login failed: {login_response.text}")
+    
+    return credentials

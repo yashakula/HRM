@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from .. import crud, models, schemas
 from ..database import get_db
 from ..auth import require_hr_admin, get_current_active_user
-from ..models import User
+from ..models import User, EmployeeStatus
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
@@ -20,6 +20,27 @@ def create_employee(
         return crud.create_employee(db=db, employee=employee)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/search", response_model=List[schemas.EmployeeResponse])
+def search_employees(
+    name: Optional[str] = Query(None, description="Search by employee name"),
+    employee_id: Optional[int] = Query(None, description="Search by employee ID"),
+    status: Optional[EmployeeStatus] = Query(None, description="Filter by employee status"),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Search and view employee records (US-02) - All authenticated users can search"""
+    search_params = schemas.EmployeeSearchParams(
+        name=name,
+        employee_id=employee_id, 
+        status=status,
+        skip=skip,
+        limit=limit
+    )
+    employees = crud.search_employees(db, search_params)
+    return employees
 
 @router.get("/{employee_id}", response_model=schemas.EmployeeResponse)
 def read_employee(

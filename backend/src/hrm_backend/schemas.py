@@ -75,3 +75,11 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Search schemas
+class EmployeeSearchParams(BaseModel):
+    name: Optional[str] = None
+    employee_id: Optional[int] = None
+    status: Optional[EmployeeStatus] = None
+    skip: int = 0
+    limit: int = 100
