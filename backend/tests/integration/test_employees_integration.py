@@ -1,0 +1,225 @@
+import pytest
+from tests.integration.conftest import IntegrationTestClient
+
+
+class TestEmployeeIntegration:
+    """Integration tests for employee endpoints against localhost server"""
+    
+    def test_create_employee_minimal_data(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test creating employee with minimal data via real server"""
+        employee_data = {
+            "person": {
+                "full_name": "Integration Test User"
+            }
+        }
+        
+        response = integration_client.post("/api/v1/employees/", json=employee_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["employee_id"] is not None
+        assert data["person"]["full_name"] == "Integration Test User"
+        assert data["status"] in ["ACTIVE", "Active"]  # Handle enum formatting differences
+        assert data["person"]["personal_information"] is None  # No personal info provided
+    
+    def test_create_employee_complete_data(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test creating employee with complete data via real server"""
+        employee_data = {
+            "person": {
+                "full_name": "Complete Data Employee",
+                "date_of_birth": "1985-03-20"
+            },
+            "personal_information": {
+                "personal_email": "complete@personal.com",
+                "ssn": "987-65-4321",
+                "bank_account": "BANK987654321"
+            },
+            "work_email": "complete@company.com",
+            "effective_start_date": "2024-06-01"
+        }
+        
+        response = integration_client.post("/api/v1/employees/", json=employee_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["employee_id"] is not None
+        assert data["person"]["full_name"] == "Complete Data Employee"
+        assert data["person"]["date_of_birth"] == "1985-03-20"
+        assert data["work_email"] == "complete@company.com"
+        assert data["effective_start_date"] == "2024-06-01"
+        assert data["person"]["personal_information"]["personal_email"] == "complete@personal.com"
+        assert data["person"]["personal_information"]["ssn"] == "987-65-4321"
+        assert data["person"]["personal_information"]["bank_account"] == "BANK987654321"
+    
+    def test_get_employee_by_id(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test retrieving employee by ID via real server"""
+        # First create an employee
+        employee_data = {
+            "person": {
+                "full_name": "Retrievable Employee"
+            }
+        }
+        
+        create_response = integration_client.post("/api/v1/employees/", json=employee_data)
+        assert create_response.status_code == 200
+        created_employee = create_response.json()
+        employee_id = created_employee["employee_id"]
+        
+        # Then retrieve it
+        get_response = integration_client.get(f"/api/v1/employees/{employee_id}")
+        assert get_response.status_code == 200
+        
+        retrieved_employee = get_response.json()
+        assert retrieved_employee["employee_id"] == employee_id
+        assert retrieved_employee["person"]["full_name"] == "Retrievable Employee"
+    
+    def test_get_nonexistent_employee(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test that retrieving non-existent employee returns 404"""
+        response = integration_client.get("/api/v1/employees/99999")
+        assert response.status_code == 404
+        assert "Employee not found" in response.json()["detail"]
+    
+    def test_list_employees(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test listing employees via real server"""
+        # Create multiple employees
+        employees_to_create = [
+            {"person": {"full_name": "List Employee 1"}},
+            {"person": {"full_name": "List Employee 2"}},
+            {"person": {"full_name": "List Employee 3"}}
+        ]
+        
+        created_ids = []
+        for emp_data in employees_to_create:
+            response = integration_client.post("/api/v1/employees/", json=emp_data)
+            assert response.status_code == 200
+            created_ids.append(response.json()["employee_id"])
+        
+        # List all employees
+        list_response = integration_client.get("/api/v1/employees/")
+        assert list_response.status_code == 200
+        
+        employees = list_response.json()
+        assert len(employees) >= 3  # At least the ones we created
+        
+        # Verify our created employees are in the list
+        employee_ids_in_response = [emp["employee_id"] for emp in employees]
+        for created_id in created_ids:
+            assert created_id in employee_ids_in_response
+    
+    def test_create_employee_validation_errors(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test validation errors when creating employees"""
+        # Test missing required field
+        invalid_data = {
+            "person": {}  # Missing full_name
+        }
+        
+        response = integration_client.post("/api/v1/employees/", json=invalid_data)
+        assert response.status_code == 422  # Validation error
+    
+    def test_create_employee_invalid_date(self, integration_client: IntegrationTestClient, authenticated_hr_admin):
+        """Test creating employee with invalid date format"""
+        employee_data = {
+            "person": {
+                "full_name": "Invalid Date Employee",
+                "date_of_birth": "not-a-date"
+            }
+        }
+        
+        response = integration_client.post("/api/v1/employees/", json=employee_data)
+        assert response.status_code == 422  # Validation error
+
+
+class TestEmployeeIntegrationPermissions:
+    """Test employee permissions across different roles via real server"""
+    
+    def test_supervisor_can_view_but_not_create(self, integration_client: IntegrationTestClient, authenticated_supervisor):
+        """Test that supervisors can view but not create employees"""
+        # Try to create - should fail
+        employee_data = {
+            "person": {
+                "full_name": "Supervisor Cannot Create"
+            }
+        }
+        
+        create_response = integration_client.post("/api/v1/employees/", json=employee_data)
+        assert create_response.status_code == 403
+        assert "HR_ADMIN" in create_response.json()["detail"]
+        
+        # But can view employee list
+        list_response = integration_client.get("/api/v1/employees/")
+        assert list_response.status_code == 200
+    
+    def test_employee_can_view_but_not_create(self, integration_client: IntegrationTestClient, authenticated_employee):
+        """Test that employees can view but not create employees"""
+        # Try to create - should fail
+        employee_data = {
+            "person": {
+                "full_name": "Employee Cannot Create"
+            }
+        }
+        
+        create_response = integration_client.post("/api/v1/employees/", json=employee_data)
+        assert create_response.status_code == 403
+        assert "HR_ADMIN" in create_response.json()["detail"]
+        
+        # But can view employee list
+        list_response = integration_client.get("/api/v1/employees/")
+        assert list_response.status_code == 200
+    
+    def test_cross_role_employee_access(self, integration_client: IntegrationTestClient):
+        """Test that employees created by one role can be viewed by others"""
+        import uuid
+        
+        # Step 1: Create and authenticate HR Admin
+        hr_unique_id = str(uuid.uuid4())[:8]
+        hr_admin_data = {
+            "username": f"hr_admin_cross_{hr_unique_id}",
+            "email": f"hr_admin_cross_{hr_unique_id}@example.com",
+            "password": "testpassword123",
+            "role": "HR_ADMIN"
+        }
+        
+        # Register and login HR Admin
+        register_response = integration_client.post("/api/v1/auth/register", json=hr_admin_data)
+        assert register_response.status_code == 200
+        
+        login_data = {"username": hr_admin_data["username"], "password": hr_admin_data["password"]}
+        login_response = integration_client.post("/api/v1/auth/login", json=login_data)
+        assert login_response.status_code == 200
+        
+        # Step 2: HR Admin creates an employee
+        employee_data = {
+            "person": {
+                "full_name": "Cross Role Test Employee"
+            }
+        }
+        
+        create_response = integration_client.post("/api/v1/employees/", json=employee_data)
+        assert create_response.status_code == 200
+        employee_id = create_response.json()["employee_id"]
+        
+        # Step 3: Logout HR Admin
+        logout_response = integration_client.post("/api/v1/auth/logout")
+        assert logout_response.status_code == 200
+        
+        # Step 4: Create and authenticate Supervisor
+        supervisor_unique_id = str(uuid.uuid4())[:8]
+        supervisor_data = {
+            "username": f"supervisor_cross_{supervisor_unique_id}",
+            "email": f"supervisor_cross_{supervisor_unique_id}@example.com",
+            "password": "testpassword123",
+            "role": "SUPERVISOR"
+        }
+        
+        # Register and login supervisor
+        register_response = integration_client.post("/api/v1/auth/register", json=supervisor_data)
+        assert register_response.status_code == 200
+        
+        login_data = {"username": supervisor_data["username"], "password": supervisor_data["password"]}
+        login_response = integration_client.post("/api/v1/auth/login", json=login_data)
+        assert login_response.status_code == 200
+        
+        # Step 5: Supervisor should be able to view the employee created by HR Admin
+        view_response = integration_client.get(f"/api/v1/employees/{employee_id}")
+        assert view_response.status_code == 200
+        assert view_response.json()["person"]["full_name"] == "Cross Role Test Employee"

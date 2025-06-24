@@ -73,14 +73,14 @@
 
 **Implementation Date**: 2025-06-24
 
-**Overview**: Complete JWT-based authentication and role-based access control system implemented before proceeding with additional user stories.
+**Overview**: Complete session-based authentication and role-based access control system implemented before proceeding with additional user stories.
 
 **Features Implemented**:
 1. **User Authentication**
-   - JWT token-based authentication with Bearer scheme
+   - Session-based authentication with HTTP-only cookies (secure)
    - Secure password hashing using bcrypt
-   - User registration and login endpoints
-   - Token validation middleware
+   - User registration, login, and logout endpoints
+   - Session token validation with itsdangerous
 
 2. **Role-Based Access Control (RBAC)**
    - Three user roles: `HR_ADMIN`, `SUPERVISOR`, `EMPLOYEE`
@@ -94,16 +94,17 @@
 
 **API Endpoints Added**:
 - `POST /api/v1/auth/register` - User registration
-- `POST /api/v1/auth/login` - User login (returns JWT token)
+- `POST /api/v1/auth/login` - User login (sets HTTP-only session cookie)
 - `GET /api/v1/auth/me` - Get current user information
-- `POST /api/v1/auth/logout` - Logout endpoint
+- `POST /api/v1/auth/logout` - Logout endpoint (clears session cookie)
 
 **Security Implementation**:
 - Employee creation restricted to HR_ADMIN role only
 - Employee viewing requires authentication (any role)
 - Proper HTTP status codes (401 Unauthorized, 403 Forbidden)
 - Password data excluded from API responses
-- JWT token expiration (30 minutes default)
+- Session token expiration (24 hours default)
+- HTTP-only cookies prevent XSS attacks
 
 **Updated Employee Endpoints**:
 - `POST /api/v1/employees/` - Now requires HR_ADMIN role
@@ -118,17 +119,25 @@
 - ✅ All roles can view employees when authenticated
 
 **Technical Details**:
-- JWT secret key configurable via environment variable
-- Token expiration: 30 minutes (configurable)
+- Session secret key configurable via environment variable (fallback: auto-generated)
+- Session expiration: 24 hours (configurable)
 - Password hashing: bcrypt with salt
 - Database: PostgreSQL with SQLAlchemy ORM
-- Authentication library: python-jose[cryptography]
+- Session management: itsdangerous for secure token signing
+- Cookie security: HTTP-only, SameSite=Lax protection
+
+**Testing Coverage**:
+- ✅ **Unit Tests** (18 tests): Fast SQLite-based tests with TestClient
+- ✅ **Integration Tests** (19 tests): Real HTTP tests against Docker server + PostgreSQL
+- ✅ Comprehensive authentication flow testing (register, login, logout)
+- ✅ Role-based access control validation across all endpoints
+- ✅ Cross-role data access testing (HR Admin creates, Supervisor views)
+- ✅ Error handling and validation testing
 
 **Future Authentication Enhancements**:
 - Refresh token mechanism
 - Password reset functionality
 - Account lockout after failed attempts
-- Session management improvements
 - Role hierarchy and permissions
 
 ---

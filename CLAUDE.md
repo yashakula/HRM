@@ -83,14 +83,20 @@ create database hrms;
 4. ✅ Set up containerization (Docker + docker-compose)
 5. ✅ Build testing framework (pytest + httpx)
 6. ✅ **US-01: Create Employee Profile** - Complete with API endpoint
-7. ✅ **Authentication & RBAC System** - JWT auth with 3 user roles
+7. ✅ **Authentication & RBAC System** - Session-based auth with 3 user roles
 
 ### Authentication System Features
-- JWT token-based authentication with Bearer scheme
+- Session-based authentication with HTTP-only cookies (secure)
 - Role-based access control (HR_ADMIN, SUPERVISOR, EMPLOYEE)
 - Secure password hashing with bcrypt
 - Protected API endpoints with proper 401/403 responses
-- User registration, login, and profile endpoints
+- User registration, login, logout, and profile endpoints
+
+### Testing Strategy
+- **Unit Tests** (`tests/unit/`): Fast tests using TestClient + SQLite (18 tests, ~12s)
+- **Integration Tests** (`tests/integration/`): Real HTTP tests against localhost Docker + PostgreSQL (19 tests, ~8s)
+- **Dual Coverage**: Both auth and employee functionality tested at unit and integration levels
+- **Test Structure**: Organized with separate directories, fixtures, and README documentation
 
 ### Next Steps
 1. US-02: Search and view employee records (with role-based filtering)
@@ -141,5 +147,8 @@ create database hrms;
 - Role-based access control
 - Audit logging for sensitive operations
 - Input validation and sanitization
+
+## Development Best Practices
+- After implementing a piece of backend functionality, make sure we have unit tests w stubs if appropriate. Keep the unit tests simple and test basics. Create integration tests that run against a real server for testing more complex functions. Update the implementation_log.md after each piece.
 
 This project is well-planned with clear requirements but needs technology stack selection and implementation to begin.
