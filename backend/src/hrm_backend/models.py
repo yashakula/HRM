@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime, Enum, Text, ForeignKey, Numeric
+from sqlalchemy import Column, Integer, String, Date, DateTime, Enum, Text, ForeignKey, Numeric, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -19,6 +19,26 @@ class PayType(PyEnum):
     HOURLY = "HOURLY"
     SALARY = "SALARY"
     CONTRACT = "CONTRACT"
+
+class UserRole(PyEnum):
+    HR_ADMIN = "HR_ADMIN"
+    SUPERVISOR = "SUPERVISOR" 
+    EMPLOYEE = "EMPLOYEE"
+
+class User(Base):
+    __tablename__ = "user"
+    
+    user_id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    role = Column(Enum(UserRole), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    employees = relationship("Employee", back_populates="user")
 
 class People(Base):
     __tablename__ = "people"
@@ -51,6 +71,7 @@ class Employee(Base):
     
     employee_id = Column(Integer, primary_key=True, index=True)
     people_id = Column(Integer, ForeignKey("people.people_id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("user.user_id"), nullable=True)  # Nullable for non-system users
     status = Column(Enum(EmployeeStatus), default=EmployeeStatus.ACTIVE)
     work_email = Column(String)
     effective_start_date = Column(Date)
@@ -60,6 +81,7 @@ class Employee(Base):
     
     # Relationships
     person = relationship("People", back_populates="employees")
+    user = relationship("User", back_populates="employees")
     assignments = relationship("Assignment", back_populates="employee")
     leave_decisions = relationship("LeaveRequest", foreign_keys="LeaveRequest.decided_by", back_populates="decision_maker")
 

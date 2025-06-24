@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import date, datetime
 from typing import Optional
-from .models import EmployeeStatus
+from .models import EmployeeStatus, UserRole
 
 class PersonCreate(BaseModel):
     full_name: str
@@ -50,6 +50,28 @@ class EmployeeResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     person: PersonResponse
+
+    class Config:
+        from_attributes = True
+
+# Authentication schemas
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+    role: UserRole
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class UserResponse(BaseModel):
+    user_id: int
+    username: str
+    email: str
+    role: UserRole
+    is_active: bool
+    created_at: datetime
 
     class Config:
         from_attributes = True

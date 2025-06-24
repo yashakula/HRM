@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from .database import create_tables
-from .routers import employees
+from .routers import employees, auth
 
 app = FastAPI(
     title="HRM Backend API",
@@ -9,6 +9,7 @@ app = FastAPI(
 )
 
 # Include routers
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(employees.router, prefix="/api/v1")
 
 @app.on_event("startup")
