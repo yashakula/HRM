@@ -1,11 +1,15 @@
 from fastapi import FastAPI
 from .database import create_tables
+from .routers import employees
 
 app = FastAPI(
     title="HRM Backend API",
     description="Human Resource Management System API",
     version="0.1.0"
 )
+
+# Include routers
+app.include_router(employees.router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup_event():
