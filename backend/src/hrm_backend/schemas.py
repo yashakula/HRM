@@ -19,6 +19,23 @@ class EmployeeCreate(BaseModel):
     effective_start_date: Optional[date] = None
     effective_end_date: Optional[date] = None
 
+class PersonUpdate(BaseModel):
+    full_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+
+class PersonalInformationUpdate(BaseModel):
+    personal_email: Optional[str] = None
+    ssn: Optional[str] = None
+    bank_account: Optional[str] = None
+
+class EmployeeUpdate(BaseModel):
+    person: Optional[PersonUpdate] = None
+    personal_information: Optional[PersonalInformationUpdate] = None
+    work_email: Optional[str] = None
+    effective_start_date: Optional[date] = None
+    effective_end_date: Optional[date] = None
+    status: Optional[EmployeeStatus] = None
+
 class PersonResponse(BaseModel):
     people_id: int
     full_name: str

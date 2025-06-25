@@ -642,6 +642,114 @@ const employeeSchema = z.object({
 - **API Integration**: End-to-end testing with backend services
 - **Authentication Flow**: Login, logout, and session management testing
 
+---
+
+## ✅ US-03: Update Employee Information (COMPLETED)
+
+**Implementation Date**: 2025-06-25
+
+**Original Requirements:**
+- Editable fields match profile details
+- Changes are saved correctly
+- HR Admin access only
+
+**Actual Implementation:**
+
+### Backend API Implementation
+- **API Endpoint**: `PUT /api/v1/employees/{id}` - HR Admin role restriction enforced
+- **Update Schema**: `EmployeeUpdateRequest` with optional fields for partial updates
+- **Data Handling**: 
+  - Person: full_name, date_of_birth (optional updates)
+  - Personal Information: personal_email, ssn, bank_account (optional updates)
+  - Employee: work_email, effective_start_date, effective_end_date, status (optional updates)
+- **Smart Updates**: Only updates fields that have changed, handles creation of personal_information if not exists
+
+### Frontend Implementation
+- **Edit Form Page**: `/employees/[id]/edit` - Dynamic route for any employee ID
+- **Form Pre-population**: Loads existing employee data and populates all form fields
+- **Access Control**: Restricted to HR Admin role only with proper error messaging
+- **Form Validation**: Real-time validation using Zod schemas matching create form
+- **Error Handling**: Comprehensive error states for loading, API errors, and validation
+- **Success Flow**: Updates employee data and redirects to employee directory with cache invalidation
+
+### Technical Features
+
+#### API Schema Design
+```typescript
+// Update request schema allows partial updates
+export interface EmployeeUpdateRequest {
+  person?: {
+    full_name?: string;
+    date_of_birth?: string;
+  };
+  personal_information?: {
+    personal_email?: string;
+    ssn?: string;
+    bank_account?: string;
+  };
+  work_email?: string;
+  effective_start_date?: string;
+  effective_end_date?: string;
+  status?: "Active" | "Inactive";
+}
+```
+
+#### Smart Change Detection
+- **Frontend Optimization**: Only sends fields that have actually changed to reduce payload
+- **Database Efficiency**: Backend only updates modified fields and relationships
+- **Personal Information Handling**: Creates personal_information record if it doesn't exist when updating
+
+#### User Interface Integration
+- **Edit Buttons**: Added to employee search results table (HR Admin only)
+- **Navigation**: Seamless flow from employee directory → edit form → back to directory
+- **Form Sections**: Same structure as create form (Personal, Sensitive, Employment information)
+- **Status Management**: Dropdown to change employee status (Active/Inactive)
+
+### API Testing Results
+```bash
+# Successful update test
+PUT /api/v1/employees/1
+{
+  "person": { "full_name": "Updated Employee Name" },
+  "work_email": "updated@company.com",
+  "status": "Active"
+}
+
+# Response: Updated employee with timestamps reflecting changes
+{
+  "employee_id": 1,
+  "person": {
+    "full_name": "Updated Employee Name",
+    "updated_at": "2025-06-25T17:14:30.217234"
+  },
+  "work_email": "updated@company.com",
+  "updated_at": "2025-06-25T17:14:30.219035"
+}
+```
+
+### Access Control Matrix
+```
+Feature                 | HR_ADMIN | SUPERVISOR | EMPLOYEE
+------------------------|----------|------------|----------
+View Employee Edit Page |    ✅    |     ❌     |    ❌
+Update Employee Info    |    ✅    |     ❌     |    ❌
+See Edit Buttons        |    ✅    |     ❌     |    ❌
+```
+
+### Business Logic Completion
+This completes the core CRUD operations for employee management:
+- ✅ **Create** (US-01): HR Admin can create new employee profiles
+- ✅ **Read** (US-02): All users can search and view employee records  
+- ✅ **Update** (US-03): HR Admin can edit employee information
+- 🔄 **Delete/Deactivate** (US-04): Not yet implemented
+
+**Enhanced Features Beyond Requirements:**
+1. **Status Management**: Added ability to change employee status (Active/Inactive)
+2. **Comprehensive Form**: Supports all employee fields including sensitive information
+3. **Smart Updates**: Only updates changed fields for efficiency
+4. **Real-time Validation**: Same validation as create form with immediate feedback
+5. **Cache Management**: Automatic query invalidation for immediate UI updates
+
 ### US-13: Define Assignments (Department/Role Management)
 - **Status**: Not started  
 - **Note**: Required before full US-01 department assignment functionality

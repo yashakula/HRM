@@ -64,3 +64,16 @@ def read_employees(
     """Get list of employees - All authenticated users can view"""
     employees = crud.get_employees(db, skip=skip, limit=limit)
     return employees
+
+@router.put("/{employee_id}", response_model=schemas.EmployeeResponse)
+def update_employee(
+    employee_id: int,
+    employee_update: schemas.EmployeeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_admin())
+):
+    """Update employee information (US-03) - HR Admin only"""
+    db_employee = crud.update_employee(db=db, employee_id=employee_id, employee_update=employee_update)
+    if db_employee is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return db_employee

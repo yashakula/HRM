@@ -2,10 +2,14 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { Employee, EmployeeSearchParams } from '@/lib/types';
+import { useIsHRAdmin } from '@/store/authStore';
 
 export default function EmployeesPage() {
+  const router = useRouter();
+  const isHRAdmin = useIsHRAdmin();
   const [searchParams, setSearchParams] = useState<EmployeeSearchParams>({
     name: '',
     employee_id: undefined,
@@ -180,6 +184,11 @@ export default function EmployeesPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                       Start Date
                     </th>
+                    {isHRAdmin && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -216,6 +225,16 @@ export default function EmployeesPage() {
                           : '-'
                         }
                       </td>
+                      {isHRAdmin && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => router.push(`/employees/${employee.employee_id}/edit`)}
+                            className="text-blue-600 hover:text-blue-900 focus:outline-none focus:underline"
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

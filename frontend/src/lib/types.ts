@@ -73,6 +73,22 @@ export interface EmployeeCreateRequest {
   effective_end_date?: string;
 }
 
+export interface EmployeeUpdateRequest {
+  person?: {
+    full_name?: string;
+    date_of_birth?: string;
+  };
+  personal_information?: {
+    personal_email?: string;
+    ssn?: string;
+    bank_account?: string;
+  };
+  work_email?: string;
+  effective_start_date?: string;
+  effective_end_date?: string;
+  status?: "Active" | "Inactive";
+}
+
 export interface EmployeeSearchParams {
   name?: string;
   employee_id?: number;

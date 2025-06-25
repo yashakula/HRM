@@ -5,7 +5,8 @@ import {
   LoginResponse, 
   User, 
   Employee, 
-  EmployeeCreateRequest, 
+  EmployeeCreateRequest,
+  EmployeeUpdateRequest,
   EmployeeSearchParams,
   ApiError 
 } from './types';
@@ -133,6 +134,13 @@ class ApiClient {
 
   async getAllEmployees(skip = 0, limit = 100): Promise<Employee[]> {
     return this.request<Employee[]>(`/api/v1/employees/?skip=${skip}&limit=${limit}`);
+  }
+
+  async updateEmployee(id: number, employee: EmployeeUpdateRequest): Promise<Employee> {
+    return this.request<Employee>(`/api/v1/employees/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(employee),
+    });
   }
 }
 

@@ -56,6 +56,7 @@ All other features—payroll, performance management, analytics, integrations—
 | US-13 | As an HR Admin, I want to define assignments so that I can categorize job roles and projects.                    | Assignment form captures name, description, and default settings. Saved successfully.                              |
 | US-14 | As an HR Admin, I want to assign assignments and designate supervisors so that reporting lines are clear.        | Assignment is linked to the employee with supervisor relationships stored.                                        |
 | US-15 | As an HR Admin, I want to set a primary assignment for employees so that their main role is clear.               | Ability to mark one assignment as primary. Primary flag is stored correctly.                                      |
+| US-17 | As an HR Admin, I want to be able to view all assignments of an employee, add an assignment, or remove one       | All assignments are listed on the employee profile. Add and remove actions are available with confirmation.       |
 
 ### 4.2 Supervisor
 

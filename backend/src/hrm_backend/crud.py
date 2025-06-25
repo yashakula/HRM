@@ -86,6 +86,61 @@ def search_employees(db: Session, search_params: schemas.EmployeeSearchParams):
     # Apply pagination
     return query.offset(search_params.skip).limit(search_params.limit).all()
 
+def update_employee(db: Session, employee_id: int, employee_update: schemas.EmployeeUpdate):
+    """Update employee information"""
+    # Get existing employee
+    db_employee = get_employee(db, employee_id)
+    if not db_employee:
+        return None
+    
+    # Update employee fields
+    if employee_update.work_email is not None:
+        db_employee.work_email = employee_update.work_email
+    if employee_update.effective_start_date is not None:
+        db_employee.effective_start_date = employee_update.effective_start_date
+    if employee_update.effective_end_date is not None:
+        db_employee.effective_end_date = employee_update.effective_end_date
+    if employee_update.status is not None:
+        db_employee.status = employee_update.status
+    
+    # Update person information if provided
+    if employee_update.person:
+        db_person = db_employee.person
+        if employee_update.person.full_name is not None:
+            db_person.full_name = employee_update.person.full_name
+        if employee_update.person.date_of_birth is not None:
+            db_person.date_of_birth = employee_update.person.date_of_birth
+    
+    # Update personal information if provided
+    if employee_update.personal_information:
+        # Get or create personal information record
+        db_personal_info = db_employee.person.personal_information
+        if not db_personal_info:
+            # Create new personal information record if it doesn't exist
+            db_personal_info = models.PersonalInformation(
+                people_id=db_employee.person.people_id
+            )
+            db.add(db_personal_info)
+        
+        # Update fields
+        if employee_update.personal_information.personal_email is not None:
+            db_personal_info.personal_email = employee_update.personal_information.personal_email
+        if employee_update.personal_information.ssn is not None:
+            db_personal_info.ssn = employee_update.personal_information.ssn
+        if employee_update.personal_information.bank_account is not None:
+            db_personal_info.bank_account = employee_update.personal_information.bank_account
+    
+    db.commit()
+    
+    # Return updated employee with all relationships
+    return db.query(models.Employee)\
+        .options(
+            joinedload(models.Employee.person)\
+            .joinedload(models.People.personal_information)
+        )\
+        .filter(models.Employee.employee_id == employee_id)\
+        .first()
+
 # Department CRUD operations
 def create_department(db: Session, department: schemas.DepartmentCreate):
     """Create a new department with optional assignment types"""
