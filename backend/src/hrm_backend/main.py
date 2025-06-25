@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from .database import create_tables, get_db
 from .routers import employees, auth
 from .seed_data import create_all_seed_data
@@ -11,6 +12,28 @@ app = FastAPI(
     title="HRM Backend API",
     description="Human Resource Management System API",
     version="0.1.0"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://0.0.0.0:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "Cookie",
+        "Set-Cookie",
+    ],
+    expose_headers=["Set-Cookie"],
 )
 
 # Include routers

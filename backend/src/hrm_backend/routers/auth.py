@@ -66,14 +66,14 @@ def login_user(
     # Create session token
     session_token = create_session_token(user.user_id)
     
-    # Set secure session cookie
+    # Set secure session cookie (expires when browser closes)
     response.set_cookie(
         key="session_token",
         value=session_token,
         httponly=True,
         secure=False,  # Set to True in production with HTTPS
-        samesite="lax",
-        max_age=24 * 60 * 60  # 24 hours
+        samesite="lax"
+        # No max_age = session cookie (expires when browser closes)
     )
     
     return {"message": "Login successful", "user": {
