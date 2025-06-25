@@ -88,14 +88,13 @@ class EmployeeSearchParams(BaseModel):
 class DepartmentCreate(BaseModel):
     name: str
     description: Optional[str] = None
+    assignment_types: Optional[list[str]] = []  # List of assignment type descriptions to create
 
-class DepartmentResponse(BaseModel):
-    department_id: int
-    name: str
-    description: Optional[str]
-
-    class Config:
-        from_attributes = True
+class DepartmentUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    assignment_types_to_add: Optional[list[str]] = []  # Assignment type descriptions to add
+    assignment_types_to_remove: Optional[list[int]] = []  # Assignment type IDs to remove
 
 # Assignment Type schemas
 class AssignmentTypeCreate(BaseModel):
@@ -108,7 +107,26 @@ class AssignmentTypeResponse(BaseModel):
     department_id: int
     created_at: datetime
     updated_at: datetime
-    department: DepartmentResponse
+    department: "DepartmentResponse"
+
+    class Config:
+        from_attributes = True
+
+class AssignmentTypeSimple(BaseModel):
+    assignment_type_id: int
+    description: str
+    department_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class DepartmentResponse(BaseModel):
+    department_id: int
+    name: str
+    description: Optional[str]
+    assignment_types: list[AssignmentTypeSimple] = []
 
     class Config:
         from_attributes = True

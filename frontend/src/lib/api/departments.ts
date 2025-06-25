@@ -1,14 +1,31 @@
 import { apiClient } from '../api';
 
+export interface AssignmentTypeSimple {
+  assignment_type_id: number;
+  description: string;
+  department_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Department {
   department_id: number;
   name: string;
   description?: string;
+  assignment_types: AssignmentTypeSimple[];
 }
 
 export interface DepartmentCreate {
   name: string;
   description?: string;
+  assignment_types?: string[];  // List of assignment type descriptions to create
+}
+
+export interface DepartmentUpdate {
+  name?: string;
+  description?: string;
+  assignment_types_to_add?: string[];  // Assignment type descriptions to add
+  assignment_types_to_remove?: number[];  // Assignment type IDs to remove
 }
 
 export const departmentApi = {
@@ -28,7 +45,7 @@ export const departmentApi = {
   },
 
   // Update department
-  update: (id: number, department: DepartmentCreate): Promise<Department> => {
+  update: (id: number, department: DepartmentUpdate): Promise<Department> => {
     return apiClient.put<Department>(`/api/v1/departments/${id}`, department);
   },
 

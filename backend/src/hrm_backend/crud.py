@@ -88,33 +88,82 @@ def search_employees(db: Session, search_params: schemas.EmployeeSearchParams):
 
 # Department CRUD operations
 def create_department(db: Session, department: schemas.DepartmentCreate):
-    """Create a new department"""
+    """Create a new department with optional assignment types"""
     db_department = models.Department(
         name=department.name,
         description=department.description
     )
     db.add(db_department)
+    db.flush()  # Get the department ID
+    
+    # Create assignment types if provided
+    if department.assignment_types:
+        for assignment_type_desc in department.assignment_types:
+            db_assignment_type = models.AssignmentType(
+                description=assignment_type_desc,
+                department_id=db_department.department_id
+            )
+            db.add(db_assignment_type)
+    
     db.commit()
-    db.refresh(db_department)
-    return db_department
+    
+    # Return with assignment types loaded
+    return db.query(models.Department)\
+        .options(joinedload(models.Department.assignment_types))\
+        .filter(models.Department.department_id == db_department.department_id)\
+        .first()
 
 def get_department(db: Session, department_id: int):
-    """Get department by ID"""
-    return db.query(models.Department).filter(models.Department.department_id == department_id).first()
+    """Get department by ID with assignment types"""
+    return db.query(models.Department)\
+        .options(joinedload(models.Department.assignment_types))\
+        .filter(models.Department.department_id == department_id)\
+        .first()
 
 def get_departments(db: Session, skip: int = 0, limit: int = 100):
-    """Get list of departments"""
-    return db.query(models.Department).offset(skip).limit(limit).all()
+    """Get list of departments with assignment types"""
+    return db.query(models.Department)\
+        .options(joinedload(models.Department.assignment_types))\
+        .offset(skip).limit(limit).all()
 
-def update_department(db: Session, department_id: int, department: schemas.DepartmentCreate):
-    """Update department"""
+def update_department(db: Session, department_id: int, department: schemas.DepartmentUpdate):
+    """Update department with assignment type management"""
     db_department = get_department(db, department_id)
-    if db_department:
+    if not db_department:
+        return None
+    
+    # Update basic department info
+    if department.name is not None:
         db_department.name = department.name
+    if department.description is not None:
         db_department.description = department.description
-        db.commit()
-        db.refresh(db_department)
-    return db_department
+    
+    # Add new assignment types
+    if department.assignment_types_to_add:
+        for assignment_type_desc in department.assignment_types_to_add:
+            db_assignment_type = models.AssignmentType(
+                description=assignment_type_desc,
+                department_id=db_department.department_id
+            )
+            db.add(db_assignment_type)
+    
+    # Remove assignment types
+    if department.assignment_types_to_remove:
+        for assignment_type_id in department.assignment_types_to_remove:
+            db.query(models.AssignmentType)\
+                .filter(
+                    models.AssignmentType.assignment_type_id == assignment_type_id,
+                    models.AssignmentType.department_id == db_department.department_id
+                )\
+                .delete()
+    
+    db.commit()
+    
+    # Return with updated assignment types
+    return db.query(models.Department)\
+        .options(joinedload(models.Department.assignment_types))\
+        .filter(models.Department.department_id == db_department.department_id)\
+        .first()
 
 def delete_department(db: Session, department_id: int):
     """Delete department"""

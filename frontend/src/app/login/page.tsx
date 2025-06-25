@@ -75,7 +75,7 @@ function LoginForm() {
         <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
           HRM System
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-center text-sm text-gray-700">
           Sign in to your account
         </p>
       </div>
@@ -95,7 +95,7 @@ function LoginForm() {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter username"
                 />
               </div>
@@ -113,7 +113,7 @@ function LoginForm() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter password"
                 />
               </div>
@@ -142,7 +142,7 @@ function LoginForm() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Demo Accounts</span>
+                <span className="px-2 bg-white text-gray-700">Demo Accounts</span>
               </div>
             </div>
 
@@ -155,8 +155,8 @@ function LoginForm() {
                   className="w-full text-left p-3 border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   <div className="font-medium text-gray-900">{account.role}</div>
-                  <div className="text-sm text-gray-500">{account.description}</div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-sm text-gray-700">{account.description}</div>
+                  <div className="text-xs text-gray-600 mt-1">
                     {account.username} / {account.password}
                   </div>
                 </button>

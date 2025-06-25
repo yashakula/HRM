@@ -46,7 +46,7 @@ export default function EmployeesPage() {
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <h1 className="text-2xl font-bold text-gray-900">Employee Directory</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-gray-700">
             Search and view employee records
           </p>
         </div>
@@ -66,7 +66,7 @@ export default function EmployeesPage() {
                   id="name"
                   value={searchParams.name || ''}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Search by name..."
                 />
               </div>
@@ -80,7 +80,7 @@ export default function EmployeesPage() {
                   id="employee_id"
                   value={searchParams.employee_id || ''}
                   onChange={(e) => handleInputChange('employee_id', e.target.value ? parseInt(e.target.value) : undefined)}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Search by ID..."
                 />
               </div>
@@ -93,7 +93,7 @@ export default function EmployeesPage() {
                   id="status"
                   value={searchParams.status || ''}
                   onChange={(e) => handleInputChange('status', e.target.value as 'Active' | 'Inactive' | undefined)}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Statuses</option>
                   <option value="Active">Active</option>
@@ -133,7 +133,7 @@ export default function EmployeesPage() {
               Employee Records
             </h3>
             {employees && (
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-700">
                 {employees.length} employee{employees.length !== 1 ? 's' : ''} found
               </span>
             )}
@@ -142,7 +142,7 @@ export default function EmployeesPage() {
           {isLoading && (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-gray-600">Loading employees...</p>
+              <p className="mt-2 text-gray-800">Loading employees...</p>
             </div>
           )}
 
@@ -156,7 +156,7 @@ export default function EmployeesPage() {
 
           {employees && employees.length === 0 && !isLoading && (
             <div className="text-center py-8">
-              <p className="text-gray-500">No employees found matching your search criteria.</p>
+              <p className="text-gray-700">No employees found matching your search criteria.</p>
             </div>
           )}
 
@@ -165,19 +165,19 @@ export default function EmployeesPage() {
               <table className="min-w-full divide-y divide-gray-300">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                       Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                       Employee ID
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                       Work Email
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                       Start Date
                     </th>
                   </tr>
@@ -190,7 +190,7 @@ export default function EmployeesPage() {
                           {employee.person.full_name}
                         </div>
                         {employee.person.date_of_birth && (
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-700">
                             DOB: {new Date(employee.person.date_of_birth).toLocaleDateString()}
                           </div>
                         )}

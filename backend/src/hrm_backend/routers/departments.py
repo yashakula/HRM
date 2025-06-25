@@ -43,11 +43,11 @@ def get_department(
 @router.put("/{department_id}", response_model=schemas.DepartmentResponse)
 def update_department(
     department_id: int,
-    department: schemas.DepartmentCreate,
+    department: schemas.DepartmentUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_hr_admin())
 ):
-    """Update department (HR Admin only)"""
+    """Update department and manage assignment types (HR Admin only)"""
     updated_department = crud.update_department(db=db, department_id=department_id, department=department)
     if not updated_department:
         raise HTTPException(status_code=404, detail="Department not found")
