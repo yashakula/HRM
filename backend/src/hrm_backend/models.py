@@ -94,7 +94,7 @@ class Department(Base):
     description = Column(String)
     
     # Relationships
-    assignment_types = relationship("AssignmentType", back_populates="department")
+    assignment_types = relationship("AssignmentType", back_populates="department", cascade="all, delete-orphan")
 
 class AssignmentType(Base):
     __tablename__ = "assignment_type"

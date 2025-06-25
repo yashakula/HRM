@@ -12,7 +12,7 @@ export default function Home() {
     return (
       <div className="text-center">
         <h1 className="text-2xl font-bold text-gray-900">Welcome to HRM System</h1>
-        <p className="mt-2 text-gray-600">Please log in to continue.</p>
+        <p className="mt-2 text-gray-800">Please log in to continue.</p>
       </div>
     );
   }
@@ -24,7 +24,7 @@ export default function Home() {
           <h1 className="text-2xl font-bold text-gray-900">
             Welcome back, {user.username}!
           </h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-gray-800">
             Role: {userRole?.replace('_', ' ')}
           </p>
         </div>
@@ -42,7 +42,7 @@ export default function Home() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
+                  <dt className="text-sm font-medium text-gray-700 truncate">
                     Employee Directory
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
@@ -73,7 +73,7 @@ export default function Home() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
+                  <dt className="text-sm font-medium text-gray-700 truncate">
                     Organization
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
@@ -104,7 +104,7 @@ export default function Home() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
+                  <dt className="text-sm font-medium text-gray-700 truncate">
                     Role Management
                   </dt>
                   <dd className="text-lg font-medium text-gray-900">
@@ -136,7 +136,7 @@ export default function Home() {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
+                    <dt className="text-sm font-medium text-gray-700 truncate">
                       HR Management
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
@@ -169,7 +169,7 @@ export default function Home() {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
+                    <dt className="text-sm font-medium text-gray-700 truncate">
                       Team Management
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
@@ -179,7 +179,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="mt-4">
-                <span className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-500 bg-gray-100">
+                <span className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-gray-100">
                   Future Feature
                 </span>
               </div>
@@ -198,7 +198,7 @@ export default function Home() {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
+                    <dt className="text-sm font-medium text-gray-700 truncate">
                       Self Service
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
@@ -208,7 +208,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="mt-4">
-                <span className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-500 bg-gray-100">
+                <span className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-gray-100">
                   Future Feature
                 </span>
               </div>
@@ -231,7 +231,7 @@ export default function Home() {
               <div className="flex-1 min-w-0">
                 <span className="absolute inset-0" aria-hidden="true" />
                 <p className="text-sm font-medium text-gray-900">Search Employees</p>
-                <p className="text-sm text-gray-500">Find employee records quickly</p>
+                <p className="text-sm text-gray-700">Find employee records quickly</p>
               </div>
             </Link>
             
@@ -242,7 +242,7 @@ export default function Home() {
               <div className="flex-1 min-w-0">
                 <span className="absolute inset-0" aria-hidden="true" />
                 <p className="text-sm font-medium text-gray-900">Departments</p>
-                <p className="text-sm text-gray-500">Browse organization structure</p>
+                <p className="text-sm text-gray-700">Browse organization structure</p>
               </div>
             </Link>
             
@@ -253,7 +253,7 @@ export default function Home() {
               <div className="flex-1 min-w-0">
                 <span className="absolute inset-0" aria-hidden="true" />
                 <p className="text-sm font-medium text-gray-900">Assignments</p>
-                <p className="text-sm text-gray-500">View employee role assignments</p>
+                <p className="text-sm text-gray-700">View employee role assignments</p>
               </div>
             </Link>
             
@@ -265,7 +265,7 @@ export default function Home() {
                 <div className="flex-1 min-w-0">
                   <span className="absolute inset-0" aria-hidden="true" />
                   <p className="text-sm font-medium text-gray-900">Add Employee</p>
-                  <p className="text-sm text-gray-500">Create new employee profile</p>
+                  <p className="text-sm text-gray-700">Create new employee profile</p>
                 </div>
               </Link>
             )}

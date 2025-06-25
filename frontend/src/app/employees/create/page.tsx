@@ -99,7 +99,7 @@ export default function CreateEmployeePage() {
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <h1 className="text-2xl font-bold text-gray-900">Create New Employee Profile</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-gray-700">
             Add a new employee to the system
           </p>
         </div>
@@ -121,7 +121,7 @@ export default function CreateEmployeePage() {
                     type="text"
                     id="full_name"
                     {...register('full_name')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter full name"
                   />
                   {errors.full_name && (
@@ -137,7 +137,7 @@ export default function CreateEmployeePage() {
                     type="date"
                     id="date_of_birth"
                     {...register('date_of_birth')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errors.date_of_birth && (
                     <p className="mt-1 text-sm text-red-600">{errors.date_of_birth.message}</p>
@@ -152,7 +152,7 @@ export default function CreateEmployeePage() {
                     type="email"
                     id="personal_email"
                     {...register('personal_email')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="personal@example.com"
                   />
                   {errors.personal_email && (
@@ -174,7 +174,7 @@ export default function CreateEmployeePage() {
                     type="text"
                     id="ssn"
                     {...register('ssn')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="XXX-XX-XXXX"
                   />
                   {errors.ssn && (
@@ -190,7 +190,7 @@ export default function CreateEmployeePage() {
                     type="text"
                     id="bank_account"
                     {...register('bank_account')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Account number"
                   />
                   {errors.bank_account && (
@@ -212,7 +212,7 @@ export default function CreateEmployeePage() {
                     type="email"
                     id="work_email"
                     {...register('work_email')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="employee@company.com"
                   />
                   {errors.work_email && (
@@ -228,7 +228,7 @@ export default function CreateEmployeePage() {
                     type="date"
                     id="effective_start_date"
                     {...register('effective_start_date')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errors.effective_start_date && (
                     <p className="mt-1 text-sm text-red-600">{errors.effective_start_date.message}</p>
@@ -243,7 +243,7 @@ export default function CreateEmployeePage() {
                     type="date"
                     id="effective_end_date"
                     {...register('effective_end_date')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errors.effective_end_date && (
                     <p className="mt-1 text-sm text-red-600">{errors.effective_end_date.message}</p>

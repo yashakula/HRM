@@ -258,6 +258,155 @@ Focus will shift from implementing new user stories to:
 3. Performance optimizations
 4. Advanced features within existing functionality
 
+### 5. Assignment Type Management Enhancement
+**Implementation Date**: 2025-06-25
+
+**Overview**: Enhanced department management system to allow HR administrators to create and manage assignment types directly within department operations, providing a streamlined workflow for organizational structure setup.
+
+**Features Added:**
+
+#### Backend Schema Updates
+- **Enhanced DepartmentCreate**: Added optional `assignment_types` field for creating assignment types during department creation
+- **Enhanced DepartmentUpdate**: Added `assignment_types_to_add` and `assignment_types_to_remove` fields for granular assignment type management
+- **Fixed Circular References**: Created `AssignmentTypeSimple` schema to resolve circular dependency issues between Department and AssignmentType responses
+- **Database Constraints**: Added `cascade="all, delete-orphan"` to Department.assignment_types relationship to handle proper deletion
+
+#### API Enhancements
+- **Department Creation**: `POST /api/v1/departments/` now accepts assignment types for immediate creation alongside department
+- **Department Updates**: `PUT /api/v1/departments/{id}` supports adding/removing assignment types in a single operation
+- **Improved Error Handling**: Better constraint violation handling and validation error responses
+
+#### Frontend UI Improvements
+- **Integrated Assignment Type Management**: Department page now includes assignment type creation within department forms
+- **Streamlined Workflow**: Create assignment types while creating departments, or edit departments to add/remove assignment types
+- **Visual Feedback**: Assignment types marked for removal show visual indicators before confirmation
+- **Form Validation**: Real-time validation for assignment type names and descriptions
+
+#### Example API Usage
+```typescript
+// Create department with assignment types
+POST /api/v1/departments/
+{
+  "name": "Engineering",
+  "description": "Software development department",
+  "assignment_types": [
+    {"description": "Senior Developer"},
+    {"description": "Junior Developer"}
+  ]
+}
+
+// Update department to add/remove assignment types
+PUT /api/v1/departments/1
+{
+  "name": "Engineering",
+  "assignment_types_to_add": [
+    {"description": "Tech Lead"}
+  ],
+  "assignment_types_to_remove": [2, 5]
+}
+```
+
+#### Technical Improvements
+- **Schema Validation**: Enhanced Pydantic schemas with better validation and error messages
+- **Database Relationships**: Improved cascade behavior for cleaner data management
+- **Error Resolution**: Fixed circular reference issues in API responses
+- **Type Safety**: Enhanced TypeScript interfaces for better frontend integration
+
+**Testing Coverage:**
+- ✅ Backend API tests for department creation with assignment types
+- ✅ Assignment type add/remove operations testing
+- ✅ Constraint validation and error handling
+- ✅ Frontend form validation and user experience testing
+
+---
+
+## ✅ UI/UX CONTRAST IMPROVEMENTS (COMPLETED)
+
+**Implementation Date**: 2025-06-25
+
+**Problem Identified**: Multiple components across the frontend had poor text contrast with light grey text (#9ca3af, #6b7280) on white backgrounds, making content difficult to read and failing accessibility standards.
+
+**Affected Components:**
+- Department page main heading and content
+- Employee form fields and labels
+- Assignment page headers and table content
+- Button text and form placeholders
+- General body text and navigation elements
+
+**Solution Implemented**: Global CSS override approach for scalable contrast improvements
+
+### Technical Implementation:
+
+#### 1. Tailwind CSS Theme Updates (`tailwind.config.js`)
+```javascript
+colors: {
+  gray: {
+    400: '#6b7280', // Originally #9ca3af - now darker
+    500: '#374151', // Originally #6b7280 - now darker  
+    600: '#1f2937', // Originally #4b5563 - now darker
+    700: '#111827', // Originally #374151 - now darker
+    800: '#111827', // Originally #1f2937 - keeping dark
+    900: '#111827', // Originally #111827 - keeping darkest
+  }
+}
+```
+
+#### 2. Global CSS Overrides (`globals.css`)
+```css
+/* Override default text colors for better contrast */
+h1, h2, h3, h4, h5, h6 {
+  color: #111827 !important; /* text-gray-900 equivalent */
+}
+
+/* Input fields and form elements */
+input, textarea, select {
+  color: #111827 !important;
+}
+
+/* Override light gray text classes with darker alternatives */
+.text-gray-400 {
+  color: #6b7280 !important; /* text-gray-500 equivalent */
+}
+
+.text-gray-500 {
+  color: #374151 !important; /* text-gray-700 equivalent */
+}
+
+/* Placeholder text improvements */
+::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Default text color for better contrast */
+body, p, div, span {
+  color: #111827;
+}
+```
+
+#### 3. Benefits of Global Approach
+- **Scalable**: Affects all components automatically without individual edits
+- **Consistent**: Ensures uniform contrast improvements across the application
+- **Maintainable**: Single point of control for text contrast standards
+- **Future-Proof**: New components automatically inherit improved contrast
+- **Accessibility**: Meets WCAG contrast ratio requirements
+
+#### 4. Alternative Solutions Considered
+- **Option 1**: Global CSS overrides (implemented)
+- **Option 2**: Component-by-component CSS class updates
+- **Option 3**: Custom Tailwind CSS theme with darker defaults
+
+**Impact:**
+- ✅ Improved readability across all pages and components
+- ✅ Better accessibility compliance (WCAG contrast ratios)
+- ✅ Enhanced user experience for all user roles
+- ✅ Reduced eye strain for extended use
+- ✅ Professional appearance with proper contrast hierarchy
+
+**Deployment:**
+- Changes applied via Docker container rebuild: `docker-compose build frontend`
+- Successfully deployed and tested across multiple browser environments
+- Verified compatibility with existing design system and component library
+
 ---
 
 ## Next User Stories to Implement
