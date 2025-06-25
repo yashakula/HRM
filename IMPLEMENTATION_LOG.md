@@ -142,6 +142,124 @@
 
 ---
 
+## ✅ US-13/US-14: Department and Assignment Management (COMPLETED)
+
+**Implementation Date**: 2025-06-24
+
+**Overview**: Complete department and assignment management system allowing HR administrators to create organizational structure and assign employees to specific roles within departments.
+
+**Features Implemented:**
+
+### 1. Department Management System
+- **Backend API**: Full CRUD operations (`/api/v1/departments`)
+  - Create new departments (HR Admin only)
+  - List all departments (all authenticated users)
+  - Update department details (HR Admin only)
+  - Delete departments (HR Admin only)
+- **Frontend Interface** (`/departments`): Complete department management UI
+  - Department cards with name, description, and ID
+  - Create/Edit dialog forms with validation
+  - Role-based access control (HR Admin can modify, others read-only)
+  - Responsive grid layout with proper error handling
+
+### 2. Assignment Type Management
+- **Backend API**: Full CRUD operations (`/api/v1/assignment-types`)
+  - Create assignment types linked to departments
+  - Filter assignment types by department
+  - Update and delete assignment types
+  - Automatic department validation
+- **Database Schema**: `AssignmentType` linked to `Department` via foreign key
+- **Frontend Integration**: Assignment types automatically filtered by department selection
+
+### 3. Employee Assignment System
+- **Backend API**: Complete assignment management (`/api/v1/assignments`)
+  - Assign employees to specific roles within departments
+  - Support for supervisor relationships (many-to-many)
+  - Track assignment start/end dates
+  - Assignment status tracking (Active/Future/Ended)
+- **Frontend Interface** (`/assignments`): Comprehensive assignment management
+  - Employee assignment table with full relationship data
+  - Create assignment dialog with department/role selection
+  - Supervisor assignment capabilities
+  - Status badges and date formatting
+
+### 4. Navigation and Integration
+- **Updated Navbar**: Added "Departments" and "Assignments" menu items
+- **Role-Based Access**: All features respect user roles (HR_ADMIN, SUPERVISOR, EMPLOYEE)
+- **API Client Enhancement**: Added generic HTTP methods (get, post, put, delete)
+- **TypeScript Integration**: Full type safety with proper interfaces
+
+**Technical Implementation:**
+
+### API Architecture
+```typescript
+// Department API endpoints
+GET    /api/v1/departments/          // List departments
+POST   /api/v1/departments/          // Create department (HR Admin)
+GET    /api/v1/departments/{id}      // Get department by ID
+PUT    /api/v1/departments/{id}      // Update department (HR Admin)
+DELETE /api/v1/departments/{id}      // Delete department (HR Admin)
+
+// Assignment Type API endpoints
+GET    /api/v1/assignment-types/     // List assignment types
+POST   /api/v1/assignment-types/     // Create assignment type (HR Admin)
+GET    /api/v1/assignment-types/{id} // Get assignment type by ID
+PUT    /api/v1/assignment-types/{id} // Update assignment type (HR Admin)
+DELETE /api/v1/assignment-types/{id} // Delete assignment type (HR Admin)
+
+// Assignment API endpoints
+GET    /api/v1/assignments/          // List assignments
+POST   /api/v1/assignments/          // Create assignment (HR Admin)
+GET    /api/v1/assignments/{id}      // Get assignment by ID
+```
+
+### Database Schema Updates
+- **Department**: Core organizational units with name and description
+- **AssignmentType**: Job roles/positions within departments
+- **Assignment**: Links employees to specific roles with supervisor relationships
+- **AssignmentSupervisor**: Many-to-many relationship for supervisor assignments
+
+### Frontend Architecture
+- **React Query**: Efficient data fetching and caching for all APIs
+- **Form Validation**: Real-time validation with error handling
+- **Responsive Design**: Mobile-friendly interfaces with Tailwind CSS
+- **Type Safety**: Full TypeScript integration with proper interfaces
+
+**Access Control Matrix:**
+```
+Feature                 | HR_ADMIN | SUPERVISOR | EMPLOYEE
+------------------------|----------|------------|----------
+View Departments        |    ✅    |     ✅     |    ✅
+Create/Edit Departments |    ✅    |     ❌     |    ❌
+View Assignment Types   |    ✅    |     ✅     |    ✅
+Create/Edit Assignments |    ✅    |     ❌     |    ❌
+View Assignments        |    ✅    |     ✅     |    ✅
+```
+
+**Container Deployment:**
+- Successfully rebuilt and deployed all Docker images
+- Fixed TypeScript build issues with API client methods
+- Resolved ESLint errors and type safety concerns
+- All services running on localhost (Database: 5432, Backend: 8000, Frontend: 3000)
+
+**Testing Coverage:**
+- Backend unit tests for CRUD operations
+- Integration tests with real database connections
+- Frontend manual testing across all user roles
+- API endpoint validation and error handling
+
+**Business Logic Completion:**
+This completes the core organizational structure management required for the HRM system. Employees can now be properly assigned to departments through specific roles, with clear supervisor relationships and effective date tracking.
+
+**Next Development Phase:**
+Focus will shift from implementing new user stories to:
+1. UI/UX improvements and refinements
+2. Core business logic enhancements
+3. Performance optimizations
+4. Advanced features within existing functionality
+
+---
+
 ## Next User Stories to Implement
 
 ### ✅ US-02: Search and View Employee Records (COMPLETED)
