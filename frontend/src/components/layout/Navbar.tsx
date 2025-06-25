@@ -41,6 +41,20 @@ export default function Navbar() {
                 Employees
               </Link>
               
+              <Link 
+                href="/departments" 
+                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Departments
+              </Link>
+              
+              <Link 
+                href="/assignments" 
+                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Assignments
+              </Link>
+              
               {userRole === UserRole.HR_ADMIN && (
                 <Link 
                   href="/employees/create" 

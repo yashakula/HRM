@@ -74,6 +74,58 @@ SEED_EMPLOYEES = [
     }
 ]
 
+# Standard seed departments
+SEED_DEPARTMENTS = [
+    {
+        "name": "Engineering",
+        "description": "Software development and technical infrastructure"
+    },
+    {
+        "name": "Marketing",
+        "description": "Product marketing and customer acquisition"
+    },
+    {
+        "name": "Human Resources",
+        "description": "People operations and talent management"
+    },
+    {
+        "name": "Finance",
+        "description": "Financial planning and accounting"
+    },
+    {
+        "name": "Operations",
+        "description": "Business operations and logistics"
+    }
+]
+
+# Standard seed assignment types
+SEED_ASSIGNMENT_TYPES = [
+    # Engineering roles
+    {"description": "Software Engineer", "department_name": "Engineering"},
+    {"description": "Senior Software Engineer", "department_name": "Engineering"},
+    {"description": "Engineering Manager", "department_name": "Engineering"},
+    {"description": "DevOps Engineer", "department_name": "Engineering"},
+    
+    # Marketing roles
+    {"description": "Marketing Specialist", "department_name": "Marketing"},
+    {"description": "Marketing Manager", "department_name": "Marketing"},
+    {"description": "Content Creator", "department_name": "Marketing"},
+    
+    # HR roles
+    {"description": "HR Specialist", "department_name": "Human Resources"},
+    {"description": "HR Manager", "department_name": "Human Resources"},
+    {"description": "Recruiter", "department_name": "Human Resources"},
+    
+    # Finance roles
+    {"description": "Financial Analyst", "department_name": "Finance"},
+    {"description": "Accountant", "department_name": "Finance"},
+    {"description": "Finance Manager", "department_name": "Finance"},
+    
+    # Operations roles
+    {"description": "Operations Coordinator", "department_name": "Operations"},
+    {"description": "Operations Manager", "department_name": "Operations"},
+]
+
 def user_exists(db: Session, username: str) -> bool:
     """Check if a user already exists"""
     return db.query(models.User).filter(models.User.username == username).first() is not None
@@ -82,6 +134,17 @@ def employee_exists(db: Session, full_name: str) -> bool:
     """Check if an employee already exists"""
     return db.query(models.Employee).join(models.People).filter(
         models.People.full_name == full_name
+    ).first() is not None
+
+def department_exists(db: Session, name: str) -> bool:
+    """Check if a department already exists"""
+    return db.query(models.Department).filter(models.Department.name == name).first() is not None
+
+def assignment_type_exists(db: Session, description: str, department_id: int) -> bool:
+    """Check if an assignment type already exists for a department"""
+    return db.query(models.AssignmentType).filter(
+        models.AssignmentType.description == description,
+        models.AssignmentType.department_id == department_id
     ).first() is not None
 
 def create_seed_users(db: Session) -> dict:
@@ -136,22 +199,89 @@ def create_seed_employees(db: Session) -> list:
     
     return created_employees
 
+def create_seed_departments(db: Session) -> list:
+    """Create seed departments if they don't exist"""
+    created_departments = []
+    
+    for dept_data in SEED_DEPARTMENTS:
+        if not department_exists(db, dept_data["name"]):
+            # Convert to Pydantic schema
+            department_schema = schemas.DepartmentCreate(**dept_data)
+            
+            # Create department using CRUD function
+            db_department = crud.create_department(db=db, department=department_schema)
+            created_departments.append(db_department)
+            logger.info(f"Created seed department: {dept_data['name']}")
+        else:
+            # Get existing department
+            existing_department = db.query(models.Department).filter(
+                models.Department.name == dept_data["name"]
+            ).first()
+            created_departments.append(existing_department)
+            logger.info(f"Seed department already exists: {dept_data['name']}")
+    
+    return created_departments
+
+def create_seed_assignment_types(db: Session) -> list:
+    """Create seed assignment types if they don't exist"""
+    created_assignment_types = []
+    
+    for at_data in SEED_ASSIGNMENT_TYPES:
+        # Get department by name
+        department = db.query(models.Department).filter(
+            models.Department.name == at_data["department_name"]
+        ).first()
+        
+        if not department:
+            logger.error(f"Department not found: {at_data['department_name']}")
+            continue
+            
+        if not assignment_type_exists(db, at_data["description"], department.department_id):
+            # Convert to Pydantic schema
+            assignment_type_schema = schemas.AssignmentTypeCreate(
+                description=at_data["description"],
+                department_id=department.department_id
+            )
+            
+            # Create assignment type using CRUD function
+            db_assignment_type = crud.create_assignment_type(db=db, assignment_type=assignment_type_schema)
+            created_assignment_types.append(db_assignment_type)
+            logger.info(f"Created seed assignment type: {at_data['description']} in {at_data['department_name']}")
+        else:
+            # Get existing assignment type
+            existing_assignment_type = db.query(models.AssignmentType).filter(
+                models.AssignmentType.description == at_data["description"],
+                models.AssignmentType.department_id == department.department_id
+            ).first()
+            created_assignment_types.append(existing_assignment_type)
+            logger.info(f"Seed assignment type already exists: {at_data['description']}")
+    
+    return created_assignment_types
+
 def create_all_seed_data(db: Session) -> dict:
-    """Create all seed data (users and employees)"""
+    """Create all seed data (users, employees, departments, assignment types)"""
     logger.info("Starting seed data creation...")
     
     try:
         # Create seed users first
         users = create_seed_users(db)
         
+        # Create seed departments
+        departments = create_seed_departments(db)
+        
+        # Create seed assignment types (depends on departments)
+        assignment_types = create_seed_assignment_types(db)
+        
         # Create seed employees
         employees = create_seed_employees(db)
         
         result = {
             "users": users,
+            "departments": departments,
+            "assignment_types": assignment_types,
             "employees": employees,
             "success": True,
-            "message": f"Seed data created: {len(users)} users, {len(employees)} employees"
+            "message": f"Seed data created: {len(users)} users, {len(departments)} departments, {len(assignment_types)} assignment types, {len(employees)} employees"
         }
         
         logger.info(result["message"])
@@ -162,6 +292,8 @@ def create_all_seed_data(db: Session) -> dict:
         db.rollback()
         return {
             "users": {},
+            "departments": [],
+            "assignment_types": [],
             "employees": [],
             "success": False,
             "error": str(e)

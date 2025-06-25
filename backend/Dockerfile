@@ -16,11 +16,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 # Copy uv configuration files and README
 COPY pyproject.toml uv.lock README.md ./
 
-# Install dependencies
-RUN uv sync --frozen --no-cache
+# Install dependencies including dev dependencies for testing
+RUN uv sync --frozen --no-cache --group dev
 
-# Copy application code
+# Copy application code and tests
 COPY src/ ./src/
+COPY tests/ ./tests/
 
 # Expose port
 EXPOSE 8000

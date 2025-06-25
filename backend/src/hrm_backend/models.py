@@ -84,6 +84,7 @@ class Employee(Base):
     user = relationship("User", back_populates="employees")
     assignments = relationship("Assignment", back_populates="employee")
     leave_decisions = relationship("LeaveRequest", foreign_keys="LeaveRequest.decided_by", back_populates="decision_maker")
+    supervised_assignments = relationship("Assignment", secondary="assignment_supervisor", back_populates="supervisors")
 
 class Department(Base):
     __tablename__ = "department"
@@ -126,6 +127,14 @@ class Assignment(Base):
     leave_requests = relationship("LeaveRequest", back_populates="assignment")
     attendance_records = relationship("Attendance", back_populates="assignment")
     compensation_history = relationship("Compensation", back_populates="assignment")
+    supervisors = relationship("Employee", secondary="assignment_supervisor", back_populates="supervised_assignments")
+
+class AssignmentSupervisor(Base):
+    __tablename__ = "assignment_supervisor"
+    
+    assignment_id = Column(Integer, ForeignKey("assignment.assignment_id"), primary_key=True)
+    supervisor_id = Column(Integer, ForeignKey("employee.employee_id"), primary_key=True)
+    assigned_at = Column(DateTime, default=datetime.utcnow)
 
 class LeaveRequest(Base):
     __tablename__ = "leave_request"

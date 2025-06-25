@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import create_tables, get_db
-from .routers import employees, auth
+from .routers import employees, auth, departments, assignment_types, assignments
 from .seed_data import create_all_seed_data
 import os
 import logging
@@ -39,6 +39,9 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(employees.router, prefix="/api/v1")
+app.include_router(departments.router, prefix="/api/v1")
+app.include_router(assignment_types.router, prefix="/api/v1")
+app.include_router(assignments.router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup_event():

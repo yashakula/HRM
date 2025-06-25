@@ -83,3 +83,57 @@ class EmployeeSearchParams(BaseModel):
     status: Optional[EmployeeStatus] = None
     skip: int = 0
     limit: int = 100
+
+# Department schemas
+class DepartmentCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class DepartmentResponse(BaseModel):
+    department_id: int
+    name: str
+    description: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+# Assignment Type schemas
+class AssignmentTypeCreate(BaseModel):
+    description: str
+    department_id: int
+
+class AssignmentTypeResponse(BaseModel):
+    assignment_type_id: int
+    description: str
+    department_id: int
+    created_at: datetime
+    updated_at: datetime
+    department: DepartmentResponse
+
+    class Config:
+        from_attributes = True
+
+# Assignment schemas
+class AssignmentCreate(BaseModel):
+    employee_id: int
+    assignment_type_id: int
+    description: Optional[str] = None
+    effective_start_date: Optional[date] = None
+    effective_end_date: Optional[date] = None
+    supervisor_ids: Optional[list[int]] = []
+
+class AssignmentResponse(BaseModel):
+    assignment_id: int
+    employee_id: int
+    assignment_type_id: int
+    description: Optional[str]
+    effective_start_date: Optional[date]
+    effective_end_date: Optional[date]
+    created_at: datetime
+    updated_at: datetime
+    employee: EmployeeResponse
+    assignment_type: AssignmentTypeResponse
+    supervisors: list[EmployeeResponse]
+
+    class Config:
+        from_attributes = True
