@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, Union, List
 from .models import EmployeeStatus, UserRole
 
 class PersonCreate(BaseModel):
@@ -70,6 +70,112 @@ class EmployeeResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Role-based response schemas for security filtering
+class PersonalInformationResponseHR(BaseModel):
+    """Full personal information response for HR Admin users"""
+    personal_email: Optional[str]
+    ssn: Optional[str]
+    bank_account: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class PersonalInformationResponseOwner(BaseModel):
+    """Personal information response for employee viewing their own record"""
+    personal_email: Optional[str]
+    ssn: Optional[str]
+    bank_account: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class PersonResponseHR(BaseModel):
+    """Full person response for HR Admin users including all personal information"""
+    people_id: int
+    full_name: str
+    date_of_birth: Optional[date]
+    created_at: datetime
+    updated_at: datetime
+    personal_information: Optional[PersonalInformationResponseHR] = None
+
+    class Config:
+        from_attributes = True
+
+class PersonResponseOwner(BaseModel):
+    """Person response for employees viewing their own record including sensitive fields"""
+    people_id: int
+    full_name: str
+    date_of_birth: Optional[date]
+    created_at: datetime
+    updated_at: datetime
+    personal_information: Optional[PersonalInformationResponseOwner] = None
+
+    class Config:
+        from_attributes = True
+
+class PersonResponseBasic(BaseModel):
+    """Basic person response excluding personal_information relationship"""
+    people_id: int
+    full_name: str
+    date_of_birth: Optional[date]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class EmployeeResponseHR(BaseModel):
+    """Full employee response for HR Admin users with complete personal information"""
+    employee_id: int
+    people_id: int
+    status: EmployeeStatus
+    work_email: Optional[str]
+    effective_start_date: Optional[date]
+    effective_end_date: Optional[date]
+    created_at: datetime
+    updated_at: datetime
+    person: PersonResponseHR
+
+    class Config:
+        from_attributes = True
+
+class EmployeeResponseOwner(BaseModel):
+    """Employee response for employees viewing their own record with sensitive data"""
+    employee_id: int
+    people_id: int
+    status: EmployeeStatus
+    work_email: Optional[str]
+    effective_start_date: Optional[date]
+    effective_end_date: Optional[date]
+    created_at: datetime
+    updated_at: datetime
+    person: PersonResponseOwner
+
+    class Config:
+        from_attributes = True
+
+class EmployeeResponseBasic(BaseModel):
+    """Basic employee response excluding sensitive personal information"""
+    employee_id: int
+    people_id: int
+    status: EmployeeStatus
+    work_email: Optional[str]
+    effective_start_date: Optional[date]
+    effective_end_date: Optional[date]
+    created_at: datetime
+    updated_at: datetime
+    person: PersonResponseBasic
+
+    class Config:
+        from_attributes = True
+
+# Union type for endpoint return annotations
+EmployeeResponseUnion = Union[EmployeeResponseHR, EmployeeResponseOwner, EmployeeResponseBasic]
 
 # Authentication schemas
 class UserCreate(BaseModel):
@@ -215,3 +321,23 @@ class SupervisorAssignmentResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Page access validation schemas
+class PageAccessRequest(BaseModel):
+    page_identifier: str
+    resource_id: Optional[int] = None  # For resource-specific pages like employee/123
+
+class PageAccessPermissions(BaseModel):
+    can_view: bool
+    can_edit: bool
+    can_create: bool
+    can_delete: bool
+    message: str
+    user_role: str
+    required_permissions: List[str]
+
+class PageAccessResponse(BaseModel):
+    page_identifier: str
+    resource_id: Optional[int]
+    permissions: PageAccessPermissions
+    access_granted: bool

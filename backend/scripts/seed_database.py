@@ -59,39 +59,57 @@ SEED_EMPLOYEES = [
         "person": {"full_name": "Alice Johnson", "date_of_birth": "1985-03-15"},
         "personal_information": {
             "personal_email": "alice.johnson@personal.com",
-            "ssn": "123-45-6789"
+            "ssn": "123-45-6789",
+            "bank_account": "ACC123456789"
         },
         "work_email": "alice.johnson@company.com",
-        "effective_start_date": "2020-01-15"
+        "effective_start_date": "2020-01-15",
+        "linked_username": "employee1"  # Links to employee1 user
     },
     {
         "person": {"full_name": "Bob Smith", "date_of_birth": "1990-07-22"},
         "personal_information": {
             "personal_email": "bob.smith@personal.com", 
-            "ssn": "234-56-7890"
+            "ssn": "234-56-7890",
+            "bank_account": "ACC234567890"
         },
         "work_email": "bob.smith@company.com",
-        "effective_start_date": "2021-03-01"
+        "effective_start_date": "2021-03-01",
+        "linked_username": "supervisor1"  # Links to supervisor1 user
     },
     {
         "person": {"full_name": "Charlie Brown", "date_of_birth": "1988-11-08"},
+        "personal_information": {
+            "personal_email": "charlie.brown@personal.com",
+            "ssn": "345-67-8901",
+            "bank_account": "ACC345678901"
+        },
         "work_email": "charlie.brown@company.com",
-        "effective_start_date": "2019-06-10"
+        "effective_start_date": "2019-06-10",
+        "linked_username": "hr_admin"  # Links to hr_admin user
     },
     {
         "person": {"full_name": "Diana Wilson", "date_of_birth": "1992-04-30"},
         "personal_information": {
             "personal_email": "diana.wilson@personal.com",
-            "bank_account": "ACC789012345"
+            "ssn": "456-78-9012",
+            "bank_account": "ACC456789012"
         },
         "work_email": "diana.wilson@company.com", 
         "effective_start_date": "2022-08-15"
+        # No linked_username - this employee has no user account
     },
     {
         "person": {"full_name": "Edward Davis", "date_of_birth": "1983-12-03"},
+        "personal_information": {
+            "personal_email": "edward.davis@personal.com",
+            "ssn": "567-89-0123",
+            "bank_account": "ACC567890123"
+        },
         "work_email": "edward.davis@company.com",
         "effective_start_date": "2018-02-20",
         "effective_end_date": "2023-12-31"  # Inactive employee
+        # No linked_username - this employee has no user account
     }
 ]
 
@@ -266,8 +284,31 @@ def create_seed_employees(db):
         ).first()
         
         if not existing_emp:
-            employee_schema = schemas.EmployeeCreate(**emp_data)
+            # Get linked user if specified
+            user_id = None
+            if emp_data.get("linked_username"):
+                linked_user = db.query(models.User).filter(
+                    models.User.username == emp_data["linked_username"]
+                ).first()
+                if linked_user:
+                    user_id = linked_user.user_id
+                else:
+                    logger.warning(f"Linked user not found: {emp_data['linked_username']}")
+            
+            # Create employee data without linked_username (not part of schema)
+            emp_data_clean = {k: v for k, v in emp_data.items() if k != "linked_username"}
+            employee_schema = schemas.EmployeeCreate(**emp_data_clean)
+            
+            # Create employee using existing CRUD function
             db_employee = crud.create_employee(db=db, employee=employee_schema)
+            
+            # Link to user if specified
+            if user_id:
+                db_employee.user_id = user_id
+                db.commit()
+                db.refresh(db_employee)
+                logger.info(f"Linked employee {emp_data['person']['full_name']} to user {emp_data['linked_username']}")
+            
             created_employees.append(db_employee)
             logger.info(f"Created seed employee: {emp_data['person']['full_name']}")
         else:

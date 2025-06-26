@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from .. import crud, models, schemas
 from ..database import get_db
-from ..auth import require_hr_admin, get_current_active_user
+from ..auth import require_hr_admin, get_current_active_user, filter_employee_response, validate_employee_access
 from ..models import User, EmployeeStatus
 
 router = APIRouter(prefix="/employees", tags=["employees"])
@@ -21,7 +21,7 @@ def create_employee(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/search", response_model=List[schemas.EmployeeResponse])
+@router.get("/search", response_model=List[schemas.EmployeeResponseUnion])
 def search_employees(
     name: Optional[str] = Query(None, description="Search by employee name"),
     employee_id: Optional[int] = Query(None, description="Search by employee ID"),
@@ -30,8 +30,8 @@ def search_employees(
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
-):
-    """Search and view employee records (US-02) - All authenticated users can search"""
+) -> List[Union[schemas.EmployeeResponseHR, schemas.EmployeeResponseOwner, schemas.EmployeeResponseBasic]]:
+    """Search and view employee records with role-based data filtering"""
     search_params = schemas.EmployeeSearchParams(
         name=name,
         employee_id=employee_id, 
@@ -40,39 +40,57 @@ def search_employees(
         limit=limit
     )
     employees = crud.search_employees(db, search_params)
-    return employees
+    
+    # Apply role-based filtering to each employee record
+    filtered_employees = []
+    for employee in employees:
+        filtered_employee = filter_employee_response(employee, current_user, db)
+        filtered_employees.append(filtered_employee)
+    
+    return filtered_employees
 
-@router.get("/{employee_id}", response_model=schemas.EmployeeResponse)
-def read_employee(
+@router.get("/{employee_id}", response_model=schemas.EmployeeResponseUnion)
+@validate_employee_access(allow_supervisor_access=True)
+async def read_employee(
     employee_id: int, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
-):
-    """Get employee by ID - All authenticated users can view"""
+) -> Union[schemas.EmployeeResponseHR, schemas.EmployeeResponseOwner, schemas.EmployeeResponseBasic]:
+    """Get employee by ID with role-based data filtering and ownership validation"""
     db_employee = crud.get_employee(db, employee_id=employee_id)
     if db_employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
-    return db_employee
+    
+    # Apply role-based filtering
+    return filter_employee_response(db_employee, current_user, db)
 
-@router.get("/", response_model=List[schemas.EmployeeResponse])
+@router.get("/", response_model=List[schemas.EmployeeResponseUnion])
 def read_employees(
     skip: int = 0, 
     limit: int = 100, 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
-):
-    """Get list of employees - All authenticated users can view"""
+) -> List[Union[schemas.EmployeeResponseHR, schemas.EmployeeResponseOwner, schemas.EmployeeResponseBasic]]:
+    """Get list of employees with role-based data filtering"""
     employees = crud.get_employees(db, skip=skip, limit=limit)
-    return employees
+    
+    # Apply role-based filtering to each employee record
+    filtered_employees = []
+    for employee in employees:
+        filtered_employee = filter_employee_response(employee, current_user, db)
+        filtered_employees.append(filtered_employee)
+    
+    return filtered_employees
 
 @router.put("/{employee_id}", response_model=schemas.EmployeeResponse)
-def update_employee(
+@validate_employee_access(allow_supervisor_access=False)
+async def update_employee(
     employee_id: int,
     employee_update: schemas.EmployeeUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_hr_admin())
+    current_user: User = Depends(get_current_active_user)
 ):
-    """Update employee information (US-03) - HR Admin only"""
+    """Update employee information with ownership validation - HR Admin or employee themselves only"""
     db_employee = crud.update_employee(db=db, employee_id=employee_id, employee_update=employee_update)
     if db_employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")

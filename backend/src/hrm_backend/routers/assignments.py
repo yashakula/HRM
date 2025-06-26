@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from .. import schemas, crud
-from ..auth import get_current_active_user, require_hr_admin, require_supervisor_or_admin
+from ..auth import get_current_active_user, require_hr_admin, require_supervisor_or_admin, validate_assignment_access, filter_assignments_by_role
 from ..database import get_db
 from ..models import User
 
@@ -47,8 +47,8 @@ def list_assignments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get list of assignments with comprehensive filtering options (all authenticated users)"""
-    return crud.get_assignments(
+    """Get list of assignments with role-based filtering - users only see assignments they own or supervise"""
+    assignments = crud.get_assignments(
         db=db, 
         employee_id=employee_id, 
         supervisor_id=supervisor_id,
@@ -58,14 +58,18 @@ def list_assignments(
         skip=skip, 
         limit=limit
     )
+    
+    # Apply role-based filtering
+    return filter_assignments_by_role(current_user, db, assignments)
 
 @router.get("/{assignment_id}", response_model=schemas.AssignmentResponse)
-def get_assignment(
+@validate_assignment_access(allow_supervisor_access=True)
+async def get_assignment(
     assignment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get assignment by ID (all authenticated users)"""
+    """Get assignment by ID with ownership validation - user must own assignment or be supervisor"""
     assignment = crud.get_assignment(db=db, assignment_id=assignment_id)
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
@@ -101,13 +105,16 @@ def get_employee_assignments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get all assignments for a specific employee"""
+    """Get all assignments for a specific employee with role-based access control"""
     # Verify employee exists
     employee = crud.get_employee(db=db, employee_id=employee_id)
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     
-    return crud.get_assignments(db=db, employee_id=employee_id)
+    assignments = crud.get_assignments(db=db, employee_id=employee_id)
+    
+    # Apply role-based filtering
+    return filter_assignments_by_role(current_user, db, assignments)
 
 @router.get("/supervisor/{supervisor_id}", response_model=List[schemas.AssignmentResponse])
 def get_supervisor_assignments(
@@ -115,13 +122,16 @@ def get_supervisor_assignments(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_supervisor_or_admin())
 ):
-    """Get all assignments supervised by a specific employee (Supervisor or HR Admin only)"""
+    """Get all assignments supervised by a specific employee with role-based filtering"""
     # Verify supervisor exists
     supervisor = crud.get_employee(db=db, employee_id=supervisor_id)
     if not supervisor:
         raise HTTPException(status_code=404, detail="Supervisor not found")
     
-    return crud.get_assignments(db=db, supervisor_id=supervisor_id)
+    assignments = crud.get_assignments(db=db, supervisor_id=supervisor_id)
+    
+    # Apply role-based filtering
+    return filter_assignments_by_role(current_user, db, assignments)
 
 # New endpoints for US-15, US-17
 
@@ -184,12 +194,13 @@ def set_primary_assignment(
     return updated_assignment
 
 @router.get("/{assignment_id}/supervisors", response_model=List[schemas.SupervisorAssignmentResponse])
-def get_assignment_supervisors(
+@validate_assignment_access(allow_supervisor_access=True)
+async def get_assignment_supervisors(
     assignment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get all supervisors for an assignment - US-14"""
+    """Get all supervisors for an assignment with ownership validation - US-14"""
     assignment = crud.get_assignment(db, assignment_id)
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")

@@ -199,3 +199,4 @@ class Compensation(Base):
     # Relationships
     assignment = relationship("Assignment", back_populates="compensation_history")
     pay_type = relationship("PayTypeModel", back_populates="compensation_records")
+
