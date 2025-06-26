@@ -27,7 +27,7 @@ export const assignmentApi = {
     if (params?.limit) searchParams.append('limit', params.limit.toString());
     
     const queryString = searchParams.toString();
-    return apiClient.get<Assignment[]>(`/api/v1/assignments${queryString ? `?${queryString}` : ''}`);
+    return apiClient.get<Assignment[]>(`/api/v1/assignments/${queryString ? `?${queryString}` : ''}`);
   },
 
   // Get assignment by ID

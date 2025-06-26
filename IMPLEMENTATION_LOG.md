@@ -1340,6 +1340,289 @@ const deleteAssignmentMutation = useMutation({
 
 ---
 
+## ✅ ASSIGNMENT FUNCTIONALITY INTEGRATION & BUG FIXES (COMPLETED)
+
+**Implementation Date**: 2025-06-26
+
+**Problem**: Assignment functionality was separated on a standalone page, but user requirements called for integrating assignment management into the employee page. Additionally, assignment/department filtering was not working due to several technical issues.
+
+### Phase 1: Assignment Integration into Employee Page
+
+**Changes Made:**
+1. **Enhanced Employee Page** (`/employees/page.tsx`):
+   - Added assignment filtering capabilities (department, assignment type)
+   - Integrated assignment creation dialog for HR Admins
+   - Added assignment summary display within employee table
+   - Implemented "Show Assignment Details" toggle for clean UI
+   - Added assignment status badges (Active/Ended/Future)
+
+2. **Navigation Updates**:
+   - Updated navbar from "Assignments" to "Employees & Assignments"
+   - Created redirect from `/assignments` to `/employees` page
+   - Removed standalone assignments page functionality
+
+3. **UI/UX Improvements**:
+   - Assignment filtering appears only when "Show Assignment Details" is checked
+   - Assignment creation button available for HR Admins only
+   - Assignment summary shows up to 3 assignments per employee
+   - Role-based permissions maintained throughout
+
+### Phase 2: Critical Bug Fixes
+
+**Issue 1: Assignment Query Dependency Problem**
+- **Problem**: Assignments only loaded when "Show Assignment Details" was checked, but filtering depended on having assignment data
+- **Fix**: Removed `enabled: showAssignments` constraint, making assignments always load for filtering
+- **File**: `/frontend/src/app/employees/page.tsx:68`
+
+**Issue 2: API URL Construction Mismatch**
+- **Problem**: Frontend missing trailing slash (`/api/v1/assignments`) while backend expected (`/api/v1/assignments/`)
+- **Fix**: Added trailing slash to getAll API call
+- **File**: `/frontend/src/lib/api/assignments.ts:30`
+
+**Issue 3: Employee Filtering Logic Error**
+- **Problem**: Filter logic assumed assignments existed but could be undefined, causing incorrect filtering
+- **Fix**: Improved filtering logic to handle undefined assignments data properly
+- **File**: `/frontend/src/app/employees/page.tsx:437-456`
+
+**Issue 4: Missing Error Handling**
+- **Problem**: No error states for assignment loading failures
+- **Fix**: Added comprehensive error handling with user-friendly messages
+- **Implementation**: 
+  - Added `assignmentsError` and `assignmentsLoading` to query
+  - Warning message for assignment loading failures
+  - Loading states in assignment display cells
+
+**Issue 5: Inefficient Query Performance**
+- **Problem**: Assignment type queries running unnecessarily when no department selected
+- **Fix**: Optimized queries to only run when needed
+- **Implementation**:
+  - Create form assignment types: only when dialog open + department selected
+  - Filter assignment types: only when department selected for filtering
+
+### Technical Implementation Details
+
+#### Assignment Filtering Logic
+```typescript
+// Enhanced filtering that handles undefined assignments
+.filter(employee => {
+  if (!assignments) return true; // Loading state
+  if (!filterDepartmentId && !filterAssignmentTypeId) return true; // No filters
+  
+  const employeeAssignments = assignments.filter(a => a.employee_id === employee.employee_id);
+  if (employeeAssignments.length === 0) return false; // No assignments when filters active
+  
+  return employeeAssignments.some(assignment => {
+    const deptMatch = !filterDepartmentId || assignment.assignment_type.department.department_id.toString() === filterDepartmentId;
+    const typeMatch = !filterAssignmentTypeId || assignment.assignment_type_id.toString() === filterAssignmentTypeId;
+    return deptMatch && typeMatch;
+  });
+})
+```
+
+#### Error Handling Implementation
+```typescript
+const { data: assignments, isLoading: assignmentsLoading, error: assignmentsError } = useQuery({
+  queryKey: ['assignments', filterDepartmentId, filterAssignmentTypeId],
+  queryFn: () => assignmentApi.getAll({...}),
+  enabled: true, // Always enabled for filtering
+});
+
+// UI Error Display
+{assignmentsError && (
+  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+    <p className="text-yellow-600">
+      Warning: Assignment data could not be loaded. Assignment filtering may not work properly.
+    </p>
+  </div>
+)}
+```
+
+#### Query Optimization
+```typescript
+// Before: Always enabled
+enabled: true
+
+// After: Conditionally enabled
+enabled: isCreateDialogOpen && !!selectedDepartment // Create form
+enabled: !!filterDepartmentId // Filtering
+```
+
+### Testing & Validation
+
+**Testing Results:**
+- ✅ Frontend builds successfully without TypeScript errors
+- ✅ Docker containers rebuild and deploy without issues
+- ✅ Backend API endpoints respond correctly (trailing slash fix verified)
+- ✅ Assignment filtering API calls constructed properly
+- ✅ Error handling displays appropriately for failed requests
+- ✅ Query optimization reduces unnecessary API calls
+
+**Functionality Verified:**
+- ✅ Assignment filtering by department works correctly
+- ✅ Assignment filtering by assignment type works correctly  
+- ✅ Combined department + assignment type filtering works
+- ✅ Employee display shows relevant assignment information
+- ✅ HR Admin assignment creation dialog functions properly
+- ✅ Navigation redirect from assignments page works
+- ✅ Role-based permissions maintained throughout
+
+### Impact & Benefits
+
+**User Experience:**
+- Unified interface for employee and assignment management
+- Reduced cognitive load by eliminating separate pages
+- Clear visual feedback for loading and error states
+- Responsive filtering with immediate visual feedback
+
+**Technical Improvements:**
+- Fixed critical API URL construction bug
+- Improved error handling and user feedback
+- Optimized query performance reducing unnecessary API calls
+- Enhanced TypeScript type safety and validation
+
+**Performance:**
+- Reduced redundant API calls through optimized query enablement
+- Faster UI response through improved loading state handling
+- Better error recovery with graceful degradation
+
+---
+
+## ✅ SEARCH PAGE RESTRUCTURING WITH TABBED LAYOUT (COMPLETED)
+
+**Implementation Date**: 2025-06-26
+
+**Problem**: User feedback indicated that the merged "Employees & Assignments" page was confusing and requested separation of employee and assignment search functionality while maintaining them on a single page.
+
+### Requirements & Solution
+
+**User Request**: "Rename it to a 'Search' page and separate out the employee search and assignment search like it was before, but have both of them on the same page"
+
+**Solution Chosen**: Tabbed Layout (Option B) providing clean separation while maximizing screen space for each search type.
+
+### Implementation Details
+
+#### 1. Navigation & Page Structure Updates
+- **Navigation**: Changed "Employees & Assignments" to "Search" in navbar
+- **New Search Page**: Created `/app/search/page.tsx` with comprehensive tabbed interface
+- **Redirect Pages**: Updated both `/employees` and `/assignments` pages to redirect to `/search`
+- **URL Structure**: Unified search functionality under `/search` route
+
+#### 2. Tabbed Interface Design
+```
+[Search Page Header]
+┌─ Employee Search ──┬─ Assignment Search ─┐
+│ [filters and results for active tab]     │
+│ • Clean separation of concerns           │
+│ • Optimized data loading per tab         │
+│ • Contextual actions within each tab     │
+└───────────────────────────────────────────┘
+```
+
+#### 3. Employee Search Tab Features
+- **Search Filters**: Name, Employee ID, Status filtering
+- **Results Display**: Clean table with employee information
+- **Actions**: View button linking to employee edit page  
+- **Clear Functionality**: Reset search criteria and refresh results
+- **Count Display**: Shows number of employees found
+
+#### 4. Assignment Search Tab Features
+- **Advanced Filtering**: 
+  - Department selection with cascading assignment types
+  - Assignment type filtering based on selected department
+  - Employee name search within assignments
+- **Active Filter Display**: Visual badges showing current filters with individual removal
+- **Clear All Filters**: One-click removal of all assignment filters
+- **Results Table**: Comprehensive assignment details including:
+  - Employee information and ID
+  - Role/assignment type with description
+  - Department information
+  - Supervisor assignments with badges
+  - Effective dates (start/end)
+  - Status badges (Active/Ended/Future)
+- **Assignment Creation**: HR Admin button for creating new assignments (moved from header to tab)
+
+#### 5. Technical Implementation
+
+**Query Optimization**:
+```typescript
+// Tab-based query enablement for performance
+enabled: activeTab === 'employees'  // Employee queries
+enabled: activeTab === 'assignments'  // Assignment queries
+```
+
+**State Management**:
+```typescript
+const [activeTab, setActiveTab] = useState<'employees' | 'assignments'>('employees');
+// Separate state management for each tab's filters
+const [employeeSearchParams, setEmployeeSearchParams] = useState<EmployeeSearchParams>({...});
+const [assignmentFilterDepartmentId, setAssignmentFilterDepartmentId] = useState<string>('');
+```
+
+**Assignment Creation Integration**:
+- Contextual placement within Assignment Search tab
+- Maintained all existing functionality from previous implementation
+- HR Admin role-based access control preserved
+
+#### 6. User Experience Improvements
+
+**Clean Navigation**:
+- Tab switching preserves individual tab state
+- Visual indicators for active tab
+- Hover effects for better interactivity
+
+**Optimized Performance**:
+- Data only loads for active tab
+- Conditional query enablement reduces unnecessary API calls
+- Efficient state management prevents cross-tab interference
+
+**Contextual Actions**:
+- Assignment creation button moved to Assignment Search tab
+- Clear separation of functionality between employee and assignment management
+- Preserved all existing search and filtering capabilities
+
+### Testing & Validation
+
+**Build & Deployment**:
+- ✅ Frontend builds successfully without TypeScript errors
+- ✅ Docker containers rebuild and deploy correctly
+- ✅ New `/search` route properly generated and accessible
+- ✅ Redirect pages function correctly
+
+**Functionality Testing**:
+- ✅ Tab switching works smoothly without data loss
+- ✅ Employee search maintains all original functionality
+- ✅ Assignment search preserves advanced filtering capabilities
+- ✅ Assignment creation dialog accessible from Assignment tab
+- ✅ Role-based permissions (HR Admin) function correctly
+- ✅ All API endpoints respond properly
+
+**User Experience**:
+- ✅ Clean visual separation between search types
+- ✅ Intuitive tab navigation
+- ✅ Contextual placement of actions and controls
+- ✅ Preserved all existing search functionality while improving organization
+
+### Impact & Benefits
+
+**Improved User Experience**:
+- Clear separation of employee vs assignment search functionality
+- Reduced cognitive load through focused, single-purpose tabs
+- Maintained all existing functionality while improving organization
+- Better visual hierarchy with contextual action placement
+
+**Technical Benefits**:
+- Optimized query performance through conditional loading
+- Clean state management with separated concerns
+- Maintainable code structure with reusable components
+- Scalable architecture for future search functionality additions
+
+**Navigation Improvements**:
+- Simplified navigation structure ("Search" vs "Employees & Assignments")
+- Logical URL routing with proper redirects
+- Consistent user flow regardless of entry point
+
+---
+
 ## Database Schema Alignment
 
 The implementation successfully aligns with the ERD design:

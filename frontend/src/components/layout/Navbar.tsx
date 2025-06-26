@@ -35,10 +35,10 @@ export default function Navbar() {
               </Link>
               
               <Link 
-                href="/employees" 
+                href="/search" 
                 className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
               >
-                Employees
+                Search
               </Link>
               
               <Link 
@@ -46,13 +46,6 @@ export default function Navbar() {
                 className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
               >
                 Departments
-              </Link>
-              
-              <Link 
-                href="/assignments" 
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Assignments
               </Link>
               
               {userRole === UserRole.HR_ADMIN && (
