@@ -155,7 +155,15 @@ class AssignmentCreate(BaseModel):
     description: Optional[str] = None
     effective_start_date: Optional[date] = None
     effective_end_date: Optional[date] = None
+    is_primary: Optional[bool] = False
     supervisor_ids: Optional[list[int]] = []
+
+class AssignmentUpdate(BaseModel):
+    assignment_type_id: Optional[int] = None
+    description: Optional[str] = None
+    effective_start_date: Optional[date] = None
+    effective_end_date: Optional[date] = None
+    is_primary: Optional[bool] = None
 
 class AssignmentResponse(BaseModel):
     assignment_id: int
@@ -164,11 +172,45 @@ class AssignmentResponse(BaseModel):
     description: Optional[str]
     effective_start_date: Optional[date]
     effective_end_date: Optional[date]
+    is_primary: bool
     created_at: datetime
     updated_at: datetime
     employee: EmployeeResponse
     assignment_type: AssignmentTypeResponse
     supervisors: list[EmployeeResponse]
+
+    class Config:
+        from_attributes = True
+
+class AssignmentSimple(BaseModel):
+    assignment_id: int
+    employee_id: int
+    assignment_type_id: int
+    description: Optional[str]
+    effective_start_date: Optional[date]
+    effective_end_date: Optional[date]
+    is_primary: bool
+    created_at: datetime
+    updated_at: datetime
+    assignment_type: AssignmentTypeResponse
+
+    class Config:
+        from_attributes = True
+
+# Supervisor management schemas
+class SupervisorAssignmentCreate(BaseModel):
+    supervisor_id: int
+    effective_start_date: date
+    effective_end_date: Optional[date] = None
+
+class SupervisorAssignmentResponse(BaseModel):
+    assignment_id: int
+    supervisor_id: int
+    effective_start_date: date
+    effective_end_date: Optional[date]
+    created_at: datetime
+    updated_at: datetime
+    supervisor: EmployeeResponse
 
     class Config:
         from_attributes = True

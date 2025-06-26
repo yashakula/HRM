@@ -118,6 +118,7 @@ class Assignment(Base):
     description = Column(String)
     effective_start_date = Column(Date)
     effective_end_date = Column(Date)
+    is_primary = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -128,13 +129,21 @@ class Assignment(Base):
     attendance_records = relationship("Attendance", back_populates="assignment")
     compensation_history = relationship("Compensation", back_populates="assignment")
     supervisors = relationship("Employee", secondary="assignment_supervisor", back_populates="supervised_assignments")
+    assignment_supervisors = relationship("AssignmentSupervisor", back_populates="assignment")
 
 class AssignmentSupervisor(Base):
     __tablename__ = "assignment_supervisor"
     
     assignment_id = Column(Integer, ForeignKey("assignment.assignment_id"), primary_key=True)
     supervisor_id = Column(Integer, ForeignKey("employee.employee_id"), primary_key=True)
-    assigned_at = Column(DateTime, default=datetime.utcnow)
+    effective_start_date = Column(Date, nullable=False)
+    effective_end_date = Column(Date)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    assignment = relationship("Assignment", back_populates="assignment_supervisors")
+    supervisor = relationship("Employee", foreign_keys=[supervisor_id])
 
 class LeaveRequest(Base):
     __tablename__ = "leave_request"

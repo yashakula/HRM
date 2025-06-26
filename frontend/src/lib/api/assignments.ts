@@ -1,29 +1,10 @@
 import { apiClient } from '../api';
-import { Employee } from '../types';
-import { AssignmentType } from './assignmentTypes';
-
-export interface Assignment {
-  assignment_id: number;
-  employee_id: number;
-  assignment_type_id: number;
-  description?: string;
-  effective_start_date?: string;
-  effective_end_date?: string;
-  created_at: string;
-  updated_at: string;
-  employee: Employee;
-  assignment_type: AssignmentType;
-  supervisors: Employee[];
-}
-
-export interface AssignmentCreate {
-  employee_id: number;
-  assignment_type_id: number;
-  description?: string;
-  effective_start_date?: string;
-  effective_end_date?: string;
-  supervisor_ids?: number[];
-}
+import { 
+  Assignment, 
+  AssignmentCreateRequest, 
+  AssignmentUpdateRequest, 
+  SupervisorAssignmentCreate
+} from '../types';
 
 export const assignmentApi = {
   // Get all assignments with optional filters
@@ -55,8 +36,38 @@ export const assignmentApi = {
   },
 
   // Create new assignment
-  create: (assignment: AssignmentCreate): Promise<Assignment> => {
+  create: (assignment: AssignmentCreateRequest): Promise<Assignment> => {
     return apiClient.post<Assignment>('/api/v1/assignments/', assignment);
+  },
+
+  // Update assignment
+  update: (id: number, assignment: AssignmentUpdateRequest): Promise<Assignment> => {
+    return apiClient.put<Assignment>(`/api/v1/assignments/${id}`, assignment);
+  },
+
+  // Delete assignment
+  delete: (id: number): Promise<{ detail: string }> => {
+    return apiClient.delete<{ detail: string }>(`/api/v1/assignments/${id}`);
+  },
+
+  // Set assignment as primary
+  setPrimary: (id: number): Promise<Assignment> => {
+    return apiClient.put<Assignment>(`/api/v1/assignments/${id}/primary`, {});
+  },
+
+  // Get assignment supervisors
+  getSupervisors: (id: number): Promise<{ supervisor_id: number; assignment_id: number; effective_start_date: string; effective_end_date?: string }[]> => {
+    return apiClient.get<{ supervisor_id: number; assignment_id: number; effective_start_date: string; effective_end_date?: string }[]>(`/api/v1/assignments/${id}/supervisors`);
+  },
+
+  // Add supervisor to assignment
+  addSupervisor: (id: number, supervisor: SupervisorAssignmentCreate): Promise<Assignment> => {
+    return apiClient.post<Assignment>(`/api/v1/assignments/${id}/supervisors`, supervisor);
+  },
+
+  // Remove supervisor from assignment
+  removeSupervisor: (id: number, supervisorId: number): Promise<{ detail: string }> => {
+    return apiClient.delete<{ detail: string }>(`/api/v1/assignments/${id}/supervisors/${supervisorId}`);
   },
 
   // Update assignment supervisors

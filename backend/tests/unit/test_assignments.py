@@ -447,3 +447,290 @@ class TestAssignments:
         # Employee can view assignments
         response = client.get("/api/v1/assignments/", cookies=employee_cookies)
         assert response.status_code == 200
+
+class TestAssignmentManagement:
+    """Test US-14, US-15, US-17: Assignment management functionality"""
+    
+    def test_create_assignment_with_primary_flag(self, client, test_users):
+        """Test creating assignment with primary flag (US-15)"""
+        cookies = login_user(client, "test_hr_admin")
+        
+        # Setup test data
+        dept = client.post("/api/v1/departments/", json={
+            "name": "QA Department", "description": "Quality Assurance"
+        }, cookies=cookies).json()
+        
+        at = client.post("/api/v1/assignment-types/", json={
+            "description": "QA Lead", "department_id": dept["department_id"]
+        }, cookies=cookies).json()
+        
+        employee = client.post("/api/v1/employees/", json={
+            "person": {"full_name": "QA Employee"}
+        }, cookies=cookies).json()
+        
+        # Create assignment as primary
+        assignment_data = {
+            "employee_id": employee["employee_id"],
+            "assignment_type_id": at["assignment_type_id"],
+            "description": "Primary QA role",
+            "is_primary": True
+        }
+        
+        response = client.post("/api/v1/assignments/", json=assignment_data, cookies=cookies)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["is_primary"] is True
+        assert data["description"] == "Primary QA role"
+    
+    def test_set_primary_assignment(self, client, test_users):
+        """Test setting an assignment as primary (US-15)"""
+        cookies = login_user(client, "test_hr_admin")
+        
+        # Setup test data
+        dept = client.post("/api/v1/departments/", json={
+            "name": "DevOps", "description": "DevOps Team"
+        }, cookies=cookies).json()
+        
+        at = client.post("/api/v1/assignment-types/", json={
+            "description": "DevOps Engineer", "department_id": dept["department_id"]
+        }, cookies=cookies).json()
+        
+        employee = client.post("/api/v1/employees/", json={
+            "person": {"full_name": "DevOps Employee"}
+        }, cookies=cookies).json()
+        
+        # Create two assignments
+        assignment1 = client.post("/api/v1/assignments/", json={
+            "employee_id": employee["employee_id"],
+            "assignment_type_id": at["assignment_type_id"],
+            "description": "First assignment",
+            "is_primary": True
+        }, cookies=cookies).json()
+        
+        assignment2 = client.post("/api/v1/assignments/", json={
+            "employee_id": employee["employee_id"],
+            "assignment_type_id": at["assignment_type_id"],
+            "description": "Second assignment",
+            "is_primary": False
+        }, cookies=cookies).json()
+        
+        # Set second assignment as primary
+        response = client.put(f"/api/v1/assignments/{assignment2['assignment_id']}/primary", 
+                            cookies=cookies)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["is_primary"] is True
+        assert data["assignment_id"] == assignment2["assignment_id"]
+        
+        # Verify first assignment is no longer primary
+        first_response = client.get(f"/api/v1/assignments/{assignment1['assignment_id']}", 
+                                  cookies=cookies)
+        assert first_response.json()["is_primary"] is False
+    
+    def test_update_assignment(self, client, test_users):
+        """Test updating assignment information (US-17)"""
+        cookies = login_user(client, "test_hr_admin")
+        
+        # Create test data
+        dept = client.post("/api/v1/departments/", json={
+            "name": "Security", "description": "Security Team"
+        }, cookies=cookies).json()
+        
+        at1 = client.post("/api/v1/assignment-types/", json={
+            "description": "Security Analyst", "department_id": dept["department_id"]
+        }, cookies=cookies).json()
+        
+        at2 = client.post("/api/v1/assignment-types/", json={
+            "description": "Senior Security Analyst", "department_id": dept["department_id"]
+        }, cookies=cookies).json()
+        
+        employee = client.post("/api/v1/employees/", json={
+            "person": {"full_name": "Security Employee"}
+        }, cookies=cookies).json()
+        
+        # Create assignment
+        assignment = client.post("/api/v1/assignments/", json={
+            "employee_id": employee["employee_id"],
+            "assignment_type_id": at1["assignment_type_id"],
+            "description": "Junior security role"
+        }, cookies=cookies).json()
+        
+        # Update assignment
+        update_data = {
+            "assignment_type_id": at2["assignment_type_id"],
+            "description": "Promoted to senior role",
+            "is_primary": True
+        }
+        
+        response = client.put(f"/api/v1/assignments/{assignment['assignment_id']}", 
+                            json=update_data, cookies=cookies)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["assignment_type_id"] == at2["assignment_type_id"]
+        assert data["description"] == "Promoted to senior role"
+        assert data["is_primary"] is True
+    
+    def test_delete_assignment(self, client, test_users):
+        """Test removing an assignment (US-17)"""
+        cookies = login_user(client, "test_hr_admin")
+        
+        # Create test data
+        dept = client.post("/api/v1/departments/", json={
+            "name": "Legal", "description": "Legal Department"
+        }, cookies=cookies).json()
+        
+        at = client.post("/api/v1/assignment-types/", json={
+            "description": "Legal Counsel", "department_id": dept["department_id"]
+        }, cookies=cookies).json()
+        
+        employee = client.post("/api/v1/employees/", json={
+            "person": {"full_name": "Legal Employee"}
+        }, cookies=cookies).json()
+        
+        # Create assignment
+        assignment = client.post("/api/v1/assignments/", json={
+            "employee_id": employee["employee_id"],
+            "assignment_type_id": at["assignment_type_id"]
+        }, cookies=cookies).json()
+        
+        assignment_id = assignment["assignment_id"]
+        
+        # Delete assignment
+        response = client.delete(f"/api/v1/assignments/{assignment_id}", cookies=cookies)
+        assert response.status_code == 200
+        assert "deleted successfully" in response.json()["detail"]
+        
+        # Verify deletion
+        get_response = client.get(f"/api/v1/assignments/{assignment_id}", cookies=cookies)
+        assert get_response.status_code == 404
+    
+    def test_add_supervisor_to_assignment(self, client, test_users):
+        """Test adding supervisor to assignment (US-14)"""
+        cookies = login_user(client, "test_hr_admin")
+        
+        # Create test data
+        dept = client.post("/api/v1/departments/", json={
+            "name": "Research", "description": "Research Team"
+        }, cookies=cookies).json()
+        
+        at = client.post("/api/v1/assignment-types/", json={
+            "description": "Research Scientist", "department_id": dept["department_id"]
+        }, cookies=cookies).json()
+        
+        employee = client.post("/api/v1/employees/", json={
+            "person": {"full_name": "Research Employee"}
+        }, cookies=cookies).json()
+        
+        supervisor = client.post("/api/v1/employees/", json={
+            "person": {"full_name": "Research Supervisor"}
+        }, cookies=cookies).json()
+        
+        # Create assignment without supervisor
+        assignment = client.post("/api/v1/assignments/", json={
+            "employee_id": employee["employee_id"],
+            "assignment_type_id": at["assignment_type_id"]
+        }, cookies=cookies).json()
+        
+        assignment_id = assignment["assignment_id"]
+        
+        # Add supervisor
+        supervisor_data = {
+            "supervisor_id": supervisor["employee_id"],
+            "effective_start_date": "2025-01-01"
+        }
+        
+        response = client.post(f"/api/v1/assignments/{assignment_id}/supervisors", 
+                             json=supervisor_data, cookies=cookies)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert len(data["supervisors"]) == 1
+        assert data["supervisors"][0]["employee_id"] == supervisor["employee_id"]
+    
+    def test_remove_supervisor_from_assignment(self, client, test_users):
+        """Test removing supervisor from assignment (US-14)"""
+        cookies = login_user(client, "test_hr_admin")
+        
+        # Create test data with supervisor
+        dept = client.post("/api/v1/departments/", json={
+            "name": "Design", "description": "Design Team"
+        }, cookies=cookies).json()
+        
+        at = client.post("/api/v1/assignment-types/", json={
+            "description": "UI Designer", "department_id": dept["department_id"]
+        }, cookies=cookies).json()
+        
+        employee = client.post("/api/v1/employees/", json={
+            "person": {"full_name": "Design Employee"}
+        }, cookies=cookies).json()
+        
+        supervisor = client.post("/api/v1/employees/", json={
+            "person": {"full_name": "Design Manager"}
+        }, cookies=cookies).json()
+        
+        # Create assignment with supervisor
+        assignment = client.post("/api/v1/assignments/", json={
+            "employee_id": employee["employee_id"],
+            "assignment_type_id": at["assignment_type_id"],
+            "supervisor_ids": [supervisor["employee_id"]]
+        }, cookies=cookies).json()
+        
+        assignment_id = assignment["assignment_id"]
+        supervisor_id = supervisor["employee_id"]
+        
+        # Remove supervisor
+        response = client.delete(f"/api/v1/assignments/{assignment_id}/supervisors/{supervisor_id}", 
+                               cookies=cookies)
+        assert response.status_code == 200
+        assert "removed" in response.json()["detail"]
+        
+        # Verify removal
+        get_response = client.get(f"/api/v1/assignments/{assignment_id}", cookies=cookies)
+        assert len(get_response.json()["supervisors"]) == 0
+    
+    def test_get_assignment_supervisors(self, client, test_users):
+        """Test getting supervisors for an assignment (US-14)"""
+        cookies = login_user(client, "test_hr_admin")
+        
+        # Create test data
+        dept = client.post("/api/v1/departments/", json={
+            "name": "Customer Support", "description": "Support Team"
+        }, cookies=cookies).json()
+        
+        at = client.post("/api/v1/assignment-types/", json={
+            "description": "Support Agent", "department_id": dept["department_id"]
+        }, cookies=cookies).json()
+        
+        employee = client.post("/api/v1/employees/", json={
+            "person": {"full_name": "Support Employee"}
+        }, cookies=cookies).json()
+        
+        supervisor1 = client.post("/api/v1/employees/", json={
+            "person": {"full_name": "Support Manager 1"}
+        }, cookies=cookies).json()
+        
+        supervisor2 = client.post("/api/v1/employees/", json={
+            "person": {"full_name": "Support Manager 2"}
+        }, cookies=cookies).json()
+        
+        # Create assignment with multiple supervisors
+        assignment = client.post("/api/v1/assignments/", json={
+            "employee_id": employee["employee_id"],
+            "assignment_type_id": at["assignment_type_id"],
+            "supervisor_ids": [supervisor1["employee_id"], supervisor2["employee_id"]]
+        }, cookies=cookies).json()
+        
+        assignment_id = assignment["assignment_id"]
+        
+        # Get assignment supervisors
+        response = client.get(f"/api/v1/assignments/{assignment_id}/supervisors", cookies=cookies)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert len(data) == 2
+        supervisor_ids = [sup["supervisor_id"] for sup in data]
+        assert supervisor1["employee_id"] in supervisor_ids
+        assert supervisor2["employee_id"] in supervisor_ids

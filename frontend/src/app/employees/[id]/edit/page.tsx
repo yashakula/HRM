@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { apiClient } from '@/lib/api';
 import { EmployeeUpdateRequest } from '@/lib/types';
 import { useIsHRAdmin } from '@/store/authStore';
+import AssignmentManagement from '@/components/employees/AssignmentManagement';
 
 // Form validation schema
 const employeeUpdateSchema = z.object({
@@ -389,6 +390,9 @@ export default function EditEmployeePage() {
           </div>
         </form>
       </div>
+
+      {/* Assignment Management Section */}
+      <AssignmentManagement employee={employee} />
     </div>
   );
 }

@@ -15,7 +15,7 @@ def create_assignment(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_hr_admin())
 ):
-    """Create a new assignment (HR Admin only)"""
+    """Create a new assignment (HR Admin only) - US-14"""
     # Verify employee exists
     employee = crud.get_employee(db=db, employee_id=assignment.employee_id)
     if not employee:
@@ -122,3 +122,117 @@ def get_supervisor_assignments(
         raise HTTPException(status_code=404, detail="Supervisor not found")
     
     return crud.get_assignments(db=db, supervisor_id=supervisor_id)
+
+# New endpoints for US-15, US-17
+
+@router.put("/{assignment_id}", response_model=schemas.AssignmentResponse)
+def update_assignment(
+    assignment_id: int,
+    assignment_update: schemas.AssignmentUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_admin())
+):
+    """Update assignment information - US-15, US-17"""
+    assignment = crud.get_assignment(db, assignment_id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    # Validate assignment type if being updated
+    if assignment_update.assignment_type_id:
+        assignment_type = crud.get_assignment_type(db, assignment_update.assignment_type_id)
+        if not assignment_type:
+            raise HTTPException(status_code=404, detail="Assignment type not found")
+    
+    updated_assignment = crud.update_assignment(db, assignment_id, assignment_update)
+    if not updated_assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    return updated_assignment
+
+@router.delete("/{assignment_id}")
+def delete_assignment(
+    assignment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_admin())
+):
+    """Remove an assignment - US-17"""
+    assignment = crud.get_assignment(db, assignment_id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    deleted_assignment = crud.delete_assignment(db, assignment_id)
+    if not deleted_assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    return {"detail": "Assignment deleted successfully"}
+
+@router.put("/{assignment_id}/primary", response_model=schemas.AssignmentResponse)
+def set_primary_assignment(
+    assignment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_admin())
+):
+    """Set assignment as primary for the employee - US-15"""
+    assignment = crud.get_assignment(db, assignment_id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    updated_assignment = crud.set_primary_assignment(db, assignment_id)
+    if not updated_assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    return updated_assignment
+
+@router.get("/{assignment_id}/supervisors", response_model=List[schemas.SupervisorAssignmentResponse])
+def get_assignment_supervisors(
+    assignment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get all supervisors for an assignment - US-14"""
+    assignment = crud.get_assignment(db, assignment_id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    return crud.get_assignment_supervisors(db, assignment_id)
+
+@router.post("/{assignment_id}/supervisors", response_model=schemas.AssignmentResponse)
+def add_supervisor_to_assignment(
+    assignment_id: int,
+    supervisor_assignment: schemas.SupervisorAssignmentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_admin())
+):
+    """Add a supervisor to an assignment - US-14"""
+    assignment = crud.get_assignment(db, assignment_id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    # Validate supervisor exists
+    supervisor = crud.get_employee(db, supervisor_assignment.supervisor_id)
+    if not supervisor:
+        raise HTTPException(status_code=404, detail="Supervisor not found")
+    
+    updated_assignment = crud.add_supervisor_to_assignment(db, assignment_id, supervisor_assignment)
+    if not updated_assignment:
+        raise HTTPException(status_code=400, detail="Supervisor already assigned to this assignment")
+    
+    return updated_assignment
+
+@router.delete("/{assignment_id}/supervisors/{supervisor_id}")
+def remove_supervisor_from_assignment(
+    assignment_id: int,
+    supervisor_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_admin())
+):
+    """Remove a supervisor from an assignment - US-14"""
+    assignment = crud.get_assignment(db, assignment_id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    success = crud.remove_supervisor_from_assignment(db, assignment_id, supervisor_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Supervisor assignment not found")
+    
+    return {"detail": "Supervisor removed from assignment successfully"}

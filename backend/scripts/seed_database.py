@@ -146,11 +146,11 @@ SEED_ASSIGNMENT_TYPES = [
 ]
 
 SEED_ASSIGNMENTS = [
-    {"employee_name": "Alice Johnson", "assignment_type": "Senior Software Engineer", "department_name": "Engineering", "supervisor_name": "Bob Smith", "start_date": "2020-01-15"},
-    {"employee_name": "Bob Smith", "assignment_type": "Engineering Manager", "department_name": "Engineering", "start_date": "2021-03-01"},
-    {"employee_name": "Charlie Brown", "assignment_type": "Marketing Manager", "department_name": "Marketing", "start_date": "2019-06-10"},
-    {"employee_name": "Diana Wilson", "assignment_type": "HR Specialist", "department_name": "Human Resources", "supervisor_name": "Charlie Brown", "start_date": "2022-08-15"},
-    {"employee_name": "Edward Davis", "assignment_type": "Financial Analyst", "department_name": "Finance", "start_date": "2018-02-20", "end_date": "2023-12-31"},
+    {"employee_name": "Alice Johnson", "assignment_type": "Senior Software Engineer", "department_name": "Engineering", "supervisor_name": "Bob Smith", "start_date": "2020-01-15", "is_primary": True},
+    {"employee_name": "Bob Smith", "assignment_type": "Engineering Manager", "department_name": "Engineering", "start_date": "2021-03-01", "is_primary": True},
+    {"employee_name": "Charlie Brown", "assignment_type": "Marketing Manager", "department_name": "Marketing", "start_date": "2019-06-10", "is_primary": True},
+    {"employee_name": "Diana Wilson", "assignment_type": "HR Specialist", "department_name": "Human Resources", "supervisor_name": "Charlie Brown", "start_date": "2022-08-15", "is_primary": True},
+    {"employee_name": "Edward Davis", "assignment_type": "Financial Analyst", "department_name": "Finance", "start_date": "2018-02-20", "end_date": "2023-12-31", "is_primary": True},
 ]
 
 # Configure logging
@@ -335,6 +335,7 @@ def create_seed_assignments(db):
             description=f"{assignment_data['assignment_type']} role",
             effective_start_date=assignment_data["start_date"],
             effective_end_date=assignment_data.get("end_date"),
+            is_primary=assignment_data.get("is_primary", False),
             supervisor_ids=supervisor_ids
         )
         

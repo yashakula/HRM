@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
+from datetime import date
 from . import models, schemas
 
 def create_employee(db: Session, employee: schemas.EmployeeCreate):
@@ -282,13 +283,20 @@ def delete_assignment_type(db: Session, assignment_type_id: int):
 # Assignment CRUD operations
 def create_assignment(db: Session, assignment: schemas.AssignmentCreate):
     """Create a new assignment with supervisor relationships"""
+    # If this is set as primary, unset other primary assignments for this employee
+    if assignment.is_primary:
+        db.query(models.Assignment)\
+            .filter(models.Assignment.employee_id == assignment.employee_id)\
+            .update({"is_primary": False})
+    
     # Create the assignment
     db_assignment = models.Assignment(
         employee_id=assignment.employee_id,
         assignment_type_id=assignment.assignment_type_id,
         description=assignment.description,
         effective_start_date=assignment.effective_start_date,
-        effective_end_date=assignment.effective_end_date
+        effective_end_date=assignment.effective_end_date,
+        is_primary=assignment.is_primary
     )
     db.add(db_assignment)
     db.flush()  # Get the assignment ID
@@ -298,7 +306,8 @@ def create_assignment(db: Session, assignment: schemas.AssignmentCreate):
         for supervisor_id in assignment.supervisor_ids:
             supervisor_rel = models.AssignmentSupervisor(
                 assignment_id=db_assignment.assignment_id,
-                supervisor_id=supervisor_id
+                supervisor_id=supervisor_id,
+                effective_start_date=assignment.effective_start_date or db_assignment.effective_start_date
             )
             db.add(supervisor_rel)
     
@@ -371,6 +380,127 @@ def get_assignments(db: Session, employee_id: int = None, supervisor_id: int = N
     
     return query.offset(skip).limit(limit).all()
 
+def update_assignment(db: Session, assignment_id: int, assignment_update: schemas.AssignmentUpdate):
+    """Update assignment information"""
+    db_assignment = get_assignment(db, assignment_id)
+    if not db_assignment:
+        return None
+    
+    # If setting as primary, unset other primary assignments for this employee
+    if assignment_update.is_primary is True:
+        db.query(models.Assignment)\
+            .filter(
+                models.Assignment.employee_id == db_assignment.employee_id,
+                models.Assignment.assignment_id != assignment_id
+            )\
+            .update({"is_primary": False})
+    
+    # Update assignment fields
+    if assignment_update.assignment_type_id is not None:
+        db_assignment.assignment_type_id = assignment_update.assignment_type_id
+    if assignment_update.description is not None:
+        db_assignment.description = assignment_update.description
+    if assignment_update.effective_start_date is not None:
+        db_assignment.effective_start_date = assignment_update.effective_start_date
+    if assignment_update.effective_end_date is not None:
+        db_assignment.effective_end_date = assignment_update.effective_end_date
+    if assignment_update.is_primary is not None:
+        db_assignment.is_primary = assignment_update.is_primary
+    
+    db.commit()
+    return get_assignment(db, assignment_id)
+
+def delete_assignment(db: Session, assignment_id: int):
+    """Delete assignment and its supervisor relationships"""
+    db_assignment = get_assignment(db, assignment_id)
+    if not db_assignment:
+        return None
+    
+    # Delete supervisor relationships first (foreign key constraint)
+    db.query(models.AssignmentSupervisor)\
+        .filter(models.AssignmentSupervisor.assignment_id == assignment_id)\
+        .delete()
+    
+    # Delete the assignment
+    db.delete(db_assignment)
+    db.commit()
+    return db_assignment
+
+def get_employee_assignments(db: Session, employee_id: int):
+    """Get all assignments for a specific employee"""
+    return db.query(models.Assignment)\
+        .options(
+            joinedload(models.Assignment.assignment_type)\
+            .joinedload(models.AssignmentType.department),
+            joinedload(models.Assignment.supervisors)\
+            .joinedload(models.Employee.person)
+        )\
+        .filter(models.Assignment.employee_id == employee_id)\
+        .order_by(models.Assignment.is_primary.desc(), models.Assignment.effective_start_date.desc())\
+        .all()
+
+def set_primary_assignment(db: Session, assignment_id: int):
+    """Set an assignment as primary and unset others for the same employee"""
+    db_assignment = get_assignment(db, assignment_id)
+    if not db_assignment:
+        return None
+    
+    # Unset all primary assignments for this employee
+    db.query(models.Assignment)\
+        .filter(models.Assignment.employee_id == db_assignment.employee_id)\
+        .update({"is_primary": False})
+    
+    # Set this assignment as primary
+    db_assignment.is_primary = True
+    db.commit()
+    
+    return get_assignment(db, assignment_id)
+
+# Supervisor management functions
+def add_supervisor_to_assignment(db: Session, assignment_id: int, supervisor_assignment: schemas.SupervisorAssignmentCreate):
+    """Add a supervisor to an assignment"""
+    # Check if supervisor relationship already exists
+    existing = db.query(models.AssignmentSupervisor)\
+        .filter(
+            models.AssignmentSupervisor.assignment_id == assignment_id,
+            models.AssignmentSupervisor.supervisor_id == supervisor_assignment.supervisor_id
+        ).first()
+    
+    if existing:
+        return None  # Supervisor already assigned
+    
+    supervisor_rel = models.AssignmentSupervisor(
+        assignment_id=assignment_id,
+        supervisor_id=supervisor_assignment.supervisor_id,
+        effective_start_date=supervisor_assignment.effective_start_date,
+        effective_end_date=supervisor_assignment.effective_end_date
+    )
+    db.add(supervisor_rel)
+    db.commit()
+    
+    return get_assignment(db, assignment_id)
+
+def remove_supervisor_from_assignment(db: Session, assignment_id: int, supervisor_id: int):
+    """Remove a supervisor from an assignment"""
+    deleted_count = db.query(models.AssignmentSupervisor)\
+        .filter(
+            models.AssignmentSupervisor.assignment_id == assignment_id,
+            models.AssignmentSupervisor.supervisor_id == supervisor_id
+        ).delete()
+    
+    db.commit()
+    return deleted_count > 0
+
+def get_assignment_supervisors(db: Session, assignment_id: int):
+    """Get all supervisors for a specific assignment"""
+    return db.query(models.AssignmentSupervisor)\
+        .options(
+            joinedload(models.AssignmentSupervisor.supervisor)\
+            .joinedload(models.Employee.person)
+        )\
+        .filter(models.AssignmentSupervisor.assignment_id == assignment_id)\
+        .all()
+
 def update_assignment_supervisors(db: Session, assignment_id: int, supervisor_ids: list[int]):
     """Update assignment supervisors"""
     # Remove existing supervisor relationships
@@ -382,7 +512,8 @@ def update_assignment_supervisors(db: Session, assignment_id: int, supervisor_id
     for supervisor_id in supervisor_ids:
         supervisor_rel = models.AssignmentSupervisor(
             assignment_id=assignment_id,
-            supervisor_id=supervisor_id
+            supervisor_id=supervisor_id,
+            effective_start_date=date.today()  # Default to today
         )
         db.add(supervisor_rel)
     

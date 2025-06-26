@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
-import { assignmentApi, Assignment, AssignmentCreate } from '@/lib/api/assignments';
+import { assignmentApi } from '@/lib/api/assignments';
+import { Assignment, AssignmentCreateRequest } from '@/lib/types';
 import { departmentApi } from '@/lib/api/departments';
 import { assignmentTypeApi } from '@/lib/api/assignmentTypes';
 import { apiClient } from '@/lib/api';
@@ -22,7 +23,7 @@ export default function AssignmentsPage() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [selectedEmployee, setSelectedEmployee] = useState<string>('');
   const [selectedSupervisor, setSelectedSupervisor] = useState<string>('');
-  const [formData, setFormData] = useState<AssignmentCreate>({
+  const [formData, setFormData] = useState<AssignmentCreateRequest>({
     employee_id: 0,
     assignment_type_id: 0,
     description: '',

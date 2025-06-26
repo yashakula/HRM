@@ -1,6 +1,16 @@
 ```mermaid
 
-eerDiagram
+erDiagram
+    USER {
+        int         user_id PK
+        string      username
+        string      email
+        string      password_hash
+        boolean     is_active
+        enum        role             "HR_ADMIN, SUPERVISOR, EMPLOYEE"
+        datetime    created_at
+        datetime    updated_at
+    }
     PEOPLE {
         int         people_id PK
         string      full_name
@@ -19,7 +29,8 @@ eerDiagram
     EMPLOYEE {
         int         employee_id PK
         int         people_id FK
-        enum        status           "e.g. Active, Inactive"
+        int         user_id FK       "nullable"
+        enum        status           "Active, Inactive"
         string      work_email
         date        effective_start_date
         date        effective_end_date
@@ -45,6 +56,15 @@ eerDiagram
         string      description
         date        effective_start_date
         date        effective_end_date
+        boolean     is_primary
+        datetime    created_at
+        datetime    updated_at
+    }
+    ASSIGNMENT_SUPERVISOR {
+        int         assignment_id PK,FK
+        int         supervisor_id PK,FK
+        date        effective_start_date
+        date        effective_end_date
         datetime    created_at
         datetime    updated_at
     }
@@ -68,7 +88,7 @@ eerDiagram
     }
     PAY_TYPE {
         int         pay_type_id PK
-        string      code             "HOURLY, SALARY, CONTRACT"
+        enum        code             "HOURLY, SALARY, CONTRACT"
         string      description
     }
     COMPENSATION {
@@ -82,14 +102,17 @@ eerDiagram
         datetime    updated_at
     }
 
-    PEOPLE ||--|| PERSONAL_INFORMATION : "has"
+    USER ||--o{ EMPLOYEE                : "system account"
+    PEOPLE ||--|| PERSONAL_INFORMATION  : "has"
     PEOPLE ||--o{ EMPLOYEE              : "is"
-    EMPLOYEE ||--o{ ASSIGNMENT           : "holds"
-    DEPARTMENT ||--o{ ASSIGNMENT_TYPE    : "defines"
-    ASSIGNMENT_TYPE ||--o{ ASSIGNMENT      : "categorizes"
-    ASSIGNMENT ||--o{ LEAVE_REQUEST       : "initiates"
-    EMPLOYEE ||--o{ LEAVE_REQUEST        : "decides"
-    ASSIGNMENT ||--o{ ATTENDANCE          : "logs"
-    ASSIGNMENT ||--o{ COMPENSATION        : "has pay history"
-    PAY_TYPE  ||--o{ COMPENSATION        : "defines"
-```
+    EMPLOYEE ||--o{ ASSIGNMENT          : "holds"
+    DEPARTMENT ||--o{ ASSIGNMENT_TYPE   : "defines"
+    ASSIGNMENT_TYPE ||--o{ ASSIGNMENT   : "categorizes"
+    ASSIGNMENT ||--o{ ASSIGNMENT_SUPERVISOR : "supervised by"
+    EMPLOYEE ||--o{ ASSIGNMENT_SUPERVISOR : "supervises"
+    ASSIGNMENT ||--o{ LEAVE_REQUEST     : "initiates"
+    EMPLOYEE ||--o{ LEAVE_REQUEST       : "decides"
+    ASSIGNMENT ||--o{ ATTENDANCE        : "logs"
+    ASSIGNMENT ||--o{ COMPENSATION      : "has pay history"
+    PAY_TYPE  ||--o{ COMPENSATION       : "defines"
+    ```
