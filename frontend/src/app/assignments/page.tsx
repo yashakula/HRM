@@ -12,6 +12,13 @@ export default function AssignmentsPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  
+  // Filter states
+  const [filterDepartmentId, setFilterDepartmentId] = useState<string>('');
+  const [filterAssignmentTypeId, setFilterAssignmentTypeId] = useState<string>('');
+  const [filterEmployeeName, setFilterEmployeeName] = useState<string>('');
+  
+  // Form states for create dialog
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [selectedEmployee, setSelectedEmployee] = useState<string>('');
   const [selectedSupervisor, setSelectedSupervisor] = useState<string>('');
@@ -27,10 +34,14 @@ export default function AssignmentsPage() {
   // Check if user is HR Admin
   const isHrAdmin = user?.role === 'HR_ADMIN';
 
-  // Fetch assignments
+  // Fetch assignments with filters
   const { data: assignments, isLoading, error } = useQuery({
-    queryKey: ['assignments'],
-    queryFn: () => assignmentApi.getAll(),
+    queryKey: ['assignments', filterDepartmentId, filterAssignmentTypeId, filterEmployeeName],
+    queryFn: () => assignmentApi.getAll({
+      department_id: filterDepartmentId ? parseInt(filterDepartmentId) : undefined,
+      assignment_type_id: filterAssignmentTypeId ? parseInt(filterAssignmentTypeId) : undefined,
+      employee_name: filterEmployeeName || undefined,
+    }),
   });
 
   // Fetch departments for filtering
@@ -39,10 +50,17 @@ export default function AssignmentsPage() {
     queryFn: departmentApi.getAll,
   });
 
-  // Fetch assignment types based on selected department
+  // Fetch assignment types based on selected department (for create form)
   const { data: assignmentTypes } = useQuery({
     queryKey: ['assignmentTypes', selectedDepartment],
     queryFn: () => assignmentTypeApi.getAll(selectedDepartment ? parseInt(selectedDepartment) : undefined),
+    enabled: true
+  });
+
+  // Fetch assignment types for filtering (based on filter department)
+  const { data: filterAssignmentTypes } = useQuery({
+    queryKey: ['assignmentTypes', filterDepartmentId],
+    queryFn: () => assignmentTypeApi.getAll(filterDepartmentId ? parseInt(filterDepartmentId) : undefined),
     enabled: true
   });
 
@@ -159,10 +177,137 @@ export default function AssignmentsPage() {
         </div>
       )}
 
+      {/* Filter Controls */}
+      <div className="bg-white shadow rounded-lg mb-6">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">Filter Assignments</h3>
+          <p className="text-sm text-gray-800">Filter assignments by department, role, or employee name</p>
+        </div>
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="filterDepartment" className="block text-sm font-medium text-gray-700 mb-1">
+                Department
+              </label>
+              <select
+                id="filterDepartment"
+                value={filterDepartmentId}
+                onChange={(e) => {
+                  setFilterDepartmentId(e.target.value);
+                  setFilterAssignmentTypeId(''); // Reset assignment type when department changes
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Departments</option>
+                {departments?.map((dept) => (
+                  <option key={dept.department_id} value={dept.department_id.toString()}>
+                    🏢 {dept.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="filterAssignmentType" className="block text-sm font-medium text-gray-700 mb-1">
+                Assignment Type
+              </label>
+              <select
+                id="filterAssignmentType"
+                value={filterAssignmentTypeId}
+                onChange={(e) => setFilterAssignmentTypeId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Assignment Types</option>
+                {filterAssignmentTypes?.map((type) => (
+                  <option key={type.assignment_type_id} value={type.assignment_type_id.toString()}>
+                    👔 {type.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="filterEmployeeName" className="block text-sm font-medium text-gray-700 mb-1">
+                Employee Name
+              </label>
+              <input
+                id="filterEmployeeName"
+                type="text"
+                placeholder="Search by employee name..."
+                value={filterEmployeeName}
+                onChange={(e) => setFilterEmployeeName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Active Filters & Clear Button */}
+          {(filterDepartmentId || filterAssignmentTypeId || filterEmployeeName) && (
+            <div className="mt-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-700">Active filters:</span>
+                {filterDepartmentId && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                    Dept: {departments?.find(d => d.department_id.toString() === filterDepartmentId)?.name}
+                    <button
+                      onClick={() => setFilterDepartmentId('')}
+                      className="ml-1 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filterAssignmentTypeId && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800">
+                    Type: {filterAssignmentTypes?.find(t => t.assignment_type_id.toString() === filterAssignmentTypeId)?.description}
+                    <button
+                      onClick={() => setFilterAssignmentTypeId('')}
+                      className="ml-1 text-green-600 hover:text-green-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filterEmployeeName && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-800">
+                    Name: {filterEmployeeName}
+                    <button
+                      onClick={() => setFilterEmployeeName('')}
+                      className="ml-1 text-purple-600 hover:text-purple-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setFilterDepartmentId('');
+                  setFilterAssignmentTypeId('');
+                  setFilterEmployeeName('');
+                }}
+                className="text-sm text-gray-600 hover:text-gray-800 px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Clear All Filters
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">Current Assignments</h2>
-          <p className="text-sm text-gray-800">All employee role assignments and their details</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-medium text-gray-900">Current Assignments</h2>
+              <p className="text-sm text-gray-800">Employee role assignments and their details</p>
+            </div>
+            {assignments && (
+              <span className="text-sm text-gray-700 bg-gray-100 px-3 py-1 rounded-full">
+                {assignments.length} assignment{assignments.length !== 1 ? 's' : ''} found
+              </span>
+            )}
+          </div>
         </div>
         <div className="overflow-x-auto">
           {assignments && assignments.length > 0 ? (

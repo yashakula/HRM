@@ -750,6 +750,122 @@ This completes the core CRUD operations for employee management:
 4. **Real-time Validation**: Same validation as create form with immediate feedback
 5. **Cache Management**: Automatic query invalidation for immediate UI updates
 
+---
+
+## ✅ ASSIGNMENT FILTERING ENHANCEMENT (COMPLETED)
+
+**Implementation Date**: 2025-06-25
+
+**Overview**: Enhanced assignment management with comprehensive filtering capabilities to improve organizational oversight and workforce management.
+
+### Problem Addressed
+- Original assignments page showed all assignments in one flat list
+- No filtering or search capabilities for large organizations
+- Difficult to find specific assignments by department or role
+- Limited organizational structure oversight
+
+### Solution Implemented
+
+#### Backend API Enhancement
+- **Extended Assignment API**: Added comprehensive filter parameters to `GET /api/v1/assignments`
+  - `department_id`: Filter assignments by department
+  - `assignment_type_id`: Filter by specific assignment type/role  
+  - `employee_name`: Search by employee name (case-insensitive partial match)
+- **Smart Query Building**: Enhanced CRUD function with optional joins and filters
+- **Maintained Compatibility**: All existing functionality preserved while adding new features
+
+#### Frontend UI Enhancement  
+- **Filter Controls Section**: Added dedicated filtering interface above assignments table
+  - Department dropdown with visual icons
+  - Assignment type dropdown (filtered by selected department)
+  - Employee name search input with real-time filtering
+- **Progressive Filtering**: Department selection automatically updates available assignment types
+- **Active Filter Indicators**: Visual badges showing currently applied filters with individual remove buttons
+- **Clear All Filters**: One-click reset functionality
+
+#### Enhanced User Experience
+- **Real-time Filtering**: Instant results as users interact with filter controls
+- **Filter State Management**: Maintains filter selections during component lifecycle
+- **Result Count Display**: Shows number of assignments found with current filters
+- **Professional Interface**: Clean, intuitive filter controls with proper spacing and visual hierarchy
+
+### Technical Implementation
+
+#### Backend API Changes
+```python
+def get_assignments(db: Session, employee_id: int = None, supervisor_id: int = None, 
+                   department_id: int = None, assignment_type_id: int = None, 
+                   employee_name: str = None, skip: int = 0, limit: int = 100):
+    """Get list of assignments with comprehensive filtering options"""
+    # New department filter
+    if department_id:
+        query = query.join(models.AssignmentType)\
+            .filter(models.AssignmentType.department_id == department_id)
+    
+    # New assignment type filter
+    if assignment_type_id:
+        query = query.filter(models.Assignment.assignment_type_id == assignment_type_id)
+    
+    # New employee name search filter
+    if employee_name:
+        query = query.join(models.Employee)\
+            .join(models.People)\
+            .filter(models.People.full_name.ilike(f"%{employee_name}%"))
+```
+
+#### Frontend Filter Interface
+```typescript
+// Filter states with React Query integration
+const { data: assignments } = useQuery({
+  queryKey: ['assignments', filterDepartmentId, filterAssignmentTypeId, filterEmployeeName],
+  queryFn: () => assignmentApi.getAll({
+    department_id: filterDepartmentId ? parseInt(filterDepartmentId) : undefined,
+    assignment_type_id: filterAssignmentTypeId ? parseInt(filterAssignmentTypeId) : undefined,
+    employee_name: filterEmployeeName || undefined,
+  }),
+});
+```
+
+### Business Impact
+
+#### Organizational Benefits
+- **Improved Oversight**: HR Admins can easily view assignments by department or role
+- **Better Workforce Planning**: Quick analysis of role distribution across departments
+- **Enhanced Supervision**: Supervisors can focus on their department's assignments
+- **Scalability**: Handles large organizations with many assignments efficiently
+
+#### User Experience Improvements
+- **Time Savings**: Instant filtering instead of manual searching through long lists
+- **Intuitive Interface**: Progressive filtering guides users to relevant results
+- **Professional Appearance**: Clean, modern interface matching enterprise standards
+- **Accessibility**: Clear filter indicators and easy-to-use controls
+
+### Filter Combinations Supported
+```
+Examples of filtering capabilities:
+1. Show all Engineering assignments
+2. Show all Senior Developer roles across all departments  
+3. Find assignments for employees named "Smith"
+4. Show Marketing Manager roles in Marketing department
+5. Any combination of the above filters
+```
+
+### Testing Results
+- ✅ Backend API accepts all new filter parameters
+- ✅ Frontend filter controls update query parameters correctly
+- ✅ Progressive filtering (department → assignment type) works properly
+- ✅ Filter badges and clear functionality operational
+- ✅ Container builds and deploys successfully
+
+### Future Enhancements
+- Date range filtering (assignment start/end dates)
+- Status filtering (Active/Future/Ended assignments)
+- Supervisor-based filtering
+- Export filtered results to CSV/PDF
+- Saved filter presets
+
+This enhancement transforms the assignments page from a basic list view into a powerful organizational management tool.
+
 ### US-13: Define Assignments (Department/Role Management)
 - **Status**: Not started  
 - **Note**: Required before full US-01 department assignment functionality

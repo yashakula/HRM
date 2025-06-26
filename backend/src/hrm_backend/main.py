@@ -78,29 +78,3 @@ async def root():
 async def health_check():
     return {"status": "healthy", "database": "configured"}
 
-@app.post("/admin/seed-data")
-async def create_seed_data_endpoint():
-    """Manually trigger seed data creation (for testing/setup)"""
-    try:
-        db = next(get_db())
-        result = create_all_seed_data(db)
-        return result
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-    finally:
-        if 'db' in locals():
-            db.close()
-
-@app.post("/admin/reset-seed-data")
-async def reset_seed_data_endpoint():
-    """Reset seed data (for testing)"""
-    try:
-        from .seed_data import reset_seed_data
-        db = next(get_db())
-        result = reset_seed_data(db)
-        return result
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-    finally:
-        if 'db' in locals():
-            db.close()

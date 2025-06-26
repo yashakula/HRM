@@ -30,12 +30,18 @@ export const assignmentApi = {
   getAll: (params?: {
     employee_id?: number;
     supervisor_id?: number;
+    department_id?: number;
+    assignment_type_id?: number;
+    employee_name?: string;
     skip?: number;
     limit?: number;
   }): Promise<Assignment[]> => {
     const searchParams = new URLSearchParams();
     if (params?.employee_id) searchParams.append('employee_id', params.employee_id.toString());
     if (params?.supervisor_id) searchParams.append('supervisor_id', params.supervisor_id.toString());
+    if (params?.department_id) searchParams.append('department_id', params.department_id.toString());
+    if (params?.assignment_type_id) searchParams.append('assignment_type_id', params.assignment_type_id.toString());
+    if (params?.employee_name) searchParams.append('employee_name', params.employee_name);
     if (params?.skip) searchParams.append('skip', params.skip.toString());
     if (params?.limit) searchParams.append('limit', params.limit.toString());
     

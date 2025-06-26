@@ -39,14 +39,24 @@ def create_assignment(
 def list_assignments(
     employee_id: Optional[int] = Query(None, description="Filter by employee ID"),
     supervisor_id: Optional[int] = Query(None, description="Filter by supervisor ID"),
+    department_id: Optional[int] = Query(None, description="Filter by department ID"),
+    assignment_type_id: Optional[int] = Query(None, description="Filter by assignment type ID"),
+    employee_name: Optional[str] = Query(None, description="Search by employee name"),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Get list of assignments with optional filters (all authenticated users)"""
+    """Get list of assignments with comprehensive filtering options (all authenticated users)"""
     return crud.get_assignments(
-        db=db, employee_id=employee_id, supervisor_id=supervisor_id, skip=skip, limit=limit
+        db=db, 
+        employee_id=employee_id, 
+        supervisor_id=supervisor_id,
+        department_id=department_id,
+        assignment_type_id=assignment_type_id,
+        employee_name=employee_name,
+        skip=skip, 
+        limit=limit
     )
 
 @router.get("/{assignment_id}", response_model=schemas.AssignmentResponse)

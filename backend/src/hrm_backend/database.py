@@ -4,10 +4,14 @@ from .models import Base
 import os
 
 # Database configuration
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", 
-    "postgresql://postgres:mysecretpassword@localhost:5432/hrms"
-)
+def get_database_url():
+    """Get database URL from environment or default"""
+    return os.getenv(
+        "DATABASE_URL", 
+        "postgresql://postgres:mysecretpassword@localhost:5432/hrms"
+    )
+
+DATABASE_URL = get_database_url()
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -19,9 +19,10 @@ COPY pyproject.toml uv.lock README.md ./
 # Install dependencies including dev dependencies for testing
 RUN uv sync --frozen --no-cache --group dev
 
-# Copy application code and tests
+# Copy application code, tests, and scripts
 COPY src/ ./src/
 COPY tests/ ./tests/
+COPY scripts/ ./scripts/
 
 # Expose port
 EXPOSE 8000

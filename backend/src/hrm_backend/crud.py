@@ -333,8 +333,10 @@ def get_assignment(db: Session, assignment_id: int):
         .filter(models.Assignment.assignment_id == assignment_id)\
         .first()
 
-def get_assignments(db: Session, employee_id: int = None, supervisor_id: int = None, skip: int = 0, limit: int = 100):
-    """Get list of assignments, optionally filtered by employee or supervisor"""
+def get_assignments(db: Session, employee_id: int = None, supervisor_id: int = None, 
+                   department_id: int = None, assignment_type_id: int = None, 
+                   employee_name: str = None, skip: int = 0, limit: int = 100):
+    """Get list of assignments with comprehensive filtering options"""
     query = db.query(models.Assignment)\
         .options(
             joinedload(models.Assignment.employee)\
@@ -344,12 +346,28 @@ def get_assignments(db: Session, employee_id: int = None, supervisor_id: int = N
             joinedload(models.Assignment.supervisors)
         )
     
+    # Existing filters
     if employee_id:
         query = query.filter(models.Assignment.employee_id == employee_id)
     
     if supervisor_id:
         query = query.join(models.AssignmentSupervisor)\
             .filter(models.AssignmentSupervisor.supervisor_id == supervisor_id)
+    
+    # New department filter
+    if department_id:
+        query = query.join(models.AssignmentType)\
+            .filter(models.AssignmentType.department_id == department_id)
+    
+    # New assignment type filter
+    if assignment_type_id:
+        query = query.filter(models.Assignment.assignment_type_id == assignment_type_id)
+    
+    # New employee name search filter
+    if employee_name:
+        query = query.join(models.Employee)\
+            .join(models.People)\
+            .filter(models.People.full_name.ilike(f"%{employee_name}%"))
     
     return query.offset(skip).limit(limit).all()
 
