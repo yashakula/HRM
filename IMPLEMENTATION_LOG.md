@@ -866,6 +866,113 @@ Examples of filtering capabilities:
 
 This enhancement transforms the assignments page from a basic list view into a powerful organizational management tool.
 
+---
+
+## ✅ DIRECT DATABASE SEEDING SYSTEM (COMPLETED)
+
+**Implementation Date**: 2025-06-25
+
+**Overview**: Replaced API-based seeding with a clean, standalone database seeding solution that provides better performance and eliminates web server dependencies.
+
+### Problem Addressed
+- Original seeding required running web server and HTTP API calls
+- Unnecessary complexity with API endpoints for database operations
+- Slower performance due to HTTP overhead
+- Non-standard approach for database management tasks
+
+### Solution Implemented
+
+#### Standalone Database Script
+- **Location**: `/backend/scripts/seed_database.py`
+- **Features**: Complete self-contained seeding with no FastAPI dependencies
+- **Database**: Direct SQLAlchemy connection using same settings as main app
+- **Independence**: Works without backend/frontend containers running
+
+#### Easy CLI Wrapper
+- **Command**: `python seed_db.py [seed|reset|help]`
+- **Execution**: Runs inside Docker container with proper uv environment
+- **Requirements**: Only database container needs to be running
+
+#### Architectural Improvements
+- **Removed API Endpoints**: Eliminated `/admin/seed-data` and `/admin/reset-seed-data` from main.py
+- **Direct Database Access**: No HTTP overhead, direct SQLAlchemy operations
+- **Standard Approach**: Conventional database management patterns
+- **Container Integration**: Seamless Docker execution with environment isolation
+
+### Technical Implementation
+
+#### Seed Data Coverage (Unchanged)
+- **3 Users**: hr_admin, supervisor1, employee1 with proper roles
+- **5 Departments**: Engineering, Marketing, HR, Finance, Operations
+- **15 Assignment Types**: Realistic roles across all departments
+- **5 Employees**: Diverse profiles with different data patterns
+- **5 Assignments**: Employee-role mappings with supervisor relationships
+
+#### Database Operations
+```python
+# Direct database connection without FastAPI
+def create_database_session():
+    database_url = get_database_url()
+    engine = create_engine(database_url)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+    return SessionLocal()
+```
+
+#### CLI Integration
+```bash
+# Clean, simple commands
+python seed_db.py seed    # Create comprehensive test data
+python seed_db.py reset   # Delete and recreate everything
+python seed_db.py help    # Usage information
+```
+
+### Performance Improvements
+- **No HTTP Overhead**: Direct database operations vs API calls
+- **Faster Execution**: Eliminates network latency and serialization
+- **Reduced Dependencies**: No need for web server to be running
+- **Container Efficiency**: Runs in backend container with proper environment
+
+### Code Quality Improvements
+- **Separation of Concerns**: Database management separate from web API
+- **Cleaner Architecture**: Removed unnecessary API endpoints
+- **Standard Patterns**: Uses conventional database management approach
+- **Better Error Handling**: Direct exception handling without HTTP layer
+
+### Foreign Key Constraint Handling
+```python
+# Improved deletion order for reset operations
+def reset_database():
+    # Delete in proper order to handle foreign keys
+    # 1. Delete users (no dependencies)
+    # 2. Delete people records (cascades to employees and assignments)
+    # 3. Delete departments (cascades to assignment types)
+```
+
+### Documentation and Usability
+- **Comprehensive README**: `README_SEEDING.md` with full usage guide
+- **Clear CLI Help**: Built-in help system with examples
+- **Container Integration**: Automatic Docker environment detection
+- **Error Messages**: Clear guidance for common issues
+
+### Benefits Achieved
+✅ **No Web Server Dependency** - Works with just database container  
+✅ **Faster Execution** - Direct database operations, no HTTP overhead  
+✅ **Cleaner Architecture** - Standard database management approach  
+✅ **Better Developer Experience** - Simple CLI commands  
+✅ **Container Integration** - Seamless Docker environment execution  
+✅ **Maintained Functionality** - All original seeding capabilities preserved  
+
+### Files Created/Modified
+- **New**: `/backend/scripts/seed_database.py` (standalone seeding script)
+- **New**: `seed_db.py` (CLI wrapper for Docker execution)
+- **New**: `README_SEEDING.md` (comprehensive documentation)
+- **Modified**: `/backend/Dockerfile` (includes scripts directory)
+- **Modified**: `main.py` (removed API endpoints)
+- **Modified**: `database.py` (added get_database_url function)
+
+This improvement provides a much cleaner, faster, and more maintainable approach to database seeding while preserving all the comprehensive test data needed for development and testing.
+
 ### US-13: Define Assignments (Department/Role Management)
 - **Status**: Not started  
 - **Note**: Required before full US-01 department assignment functionality
