@@ -9,6 +9,7 @@ from ..auth import (
     get_current_active_user
 )
 from ..database import get_db
+from .. import models
 from ..models import User
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -83,9 +84,23 @@ def login_user(
     }}
 
 @router.get("/me", response_model=schemas.UserResponse)
-def read_current_user(current_user: User = Depends(get_current_active_user)):
-    """Get current user information"""
-    return current_user
+def read_current_user(current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    """Get current user information with associated employee if exists"""
+    # Fetch the associated employee for this user
+    employee = db.query(models.Employee).filter(models.Employee.user_id == current_user.user_id).first()
+    
+    # Create response with employee info if available
+    user_data = {
+        "user_id": current_user.user_id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "role": current_user.role,
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at,
+        "employee": employee
+    }
+    
+    return user_data
 
 @router.post("/logout")
 def logout_user(response: Response):

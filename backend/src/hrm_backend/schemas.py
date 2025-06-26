@@ -89,6 +89,7 @@ class UserResponse(BaseModel):
     role: UserRole
     is_active: bool
     created_at: datetime
+    employee: Optional["EmployeeResponse"] = None  # Associated employee if exists
 
     class Config:
         from_attributes = True

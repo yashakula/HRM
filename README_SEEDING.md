@@ -44,11 +44,13 @@ Employee-role mappings with supervisor relationships:
 ### Quick Commands
 
 ```bash
-# Easy seeding with the CLI script (NEW: Direct database access)
+# Use the CLI wrapper from project root (RECOMMENDED)
 python seed_db.py seed   # Create seed data
 python seed_db.py reset  # Delete and recreate all data
 python seed_db.py help   # Show usage info
 ```
+
+**Note**: Always use `python seed_db.py` from the project root, not the internal script directly.
 
 ### Automatic Seeding
 
@@ -56,15 +58,20 @@ Seed data is automatically created when the backend starts (controlled by `CREAT
 
 ### Manual Seeding
 
-Use the provided CLI script for the easiest experience:
+Use the provided CLI wrapper from the project root:
 
 ```bash
 # Make sure containers are running (only database required)
 docker-compose up -d
 
-# Seed the database (runs directly in Docker container)
+# Seed the database using the wrapper script
 python seed_db.py seed
 ```
+
+**Important**: 
+- Run `python seed_db.py` from the project root directory
+- The script automatically checks if containers are running
+- It handles all Docker container orchestration for you
 
 ## Testing Different Scenarios
 
@@ -89,9 +96,35 @@ The seeded assignments include:
 
 ## Implementation Details
 
-### Seed Data Location
-- **Configuration**: `/backend/scripts/seed_database.py` (standalone script)
-- **Management**: Auto-startup + Direct database CLI script
+### Seeding Architecture
+The HRM seeding system uses a two-file architecture for optimal user experience:
+
+1. **`/seed_db.py` (Recommended Interface)**
+   - **Purpose**: User-friendly CLI wrapper for the project root
+   - **Usage**: `python seed_db.py [seed|reset|help]` 
+   - **Function**: Orchestrates Docker container execution
+   - **Benefits**: Easy to use, handles container management automatically
+
+2. **`/backend/scripts/seed_database.py` (Implementation)**
+   - **Purpose**: Actual seeding script with database operations
+   - **Function**: Direct SQLAlchemy operations, no FastAPI dependencies
+   - **Execution**: Runs inside Docker container via the wrapper
+   - **Benefits**: Self-contained, proper dependency isolation
+
+### How It Works
+```bash
+# When you run this from project root:
+python seed_db.py seed
+
+# It internally executes:
+docker-compose exec backend uv run python scripts/seed_database.py seed
+```
+
+### Why This Architecture?
+- **User-Friendly**: Simple commands from project root
+- **Container-Aware**: Automatically handles Docker execution
+- **Environment Isolation**: Runs with proper UV dependencies inside container
+- **Error Handling**: Checks container status and provides helpful messages
 
 ### Smart Seeding
 - **Idempotent**: Only creates data that doesn't already exist

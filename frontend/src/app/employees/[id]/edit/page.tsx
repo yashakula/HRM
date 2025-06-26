@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { apiClient } from '@/lib/api';
 import { EmployeeUpdateRequest } from '@/lib/types';
-import { useIsHRAdmin } from '@/store/authStore';
+import { useIsHRAdmin, useAuthStore } from '@/store/authStore';
 import AssignmentManagement from '@/components/employees/AssignmentManagement';
 
 // Form validation schema
@@ -36,7 +36,9 @@ export default function EditEmployeePage() {
   const params = useParams();
   const queryClient = useQueryClient();
   const isHRAdmin = useIsHRAdmin();
+  const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const employeeId = parseInt(params.id as string);
 
@@ -88,14 +90,17 @@ export default function EditEmployeePage() {
     },
   });
 
-  // Redirect if not HR Admin
-  if (!isHRAdmin) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-md p-4">
-        <p className="text-red-600">Access denied. Only HR Administrators can edit employees.</p>
-      </div>
-    );
-  }
+  // HR Admins can edit, others can only view
+  const canEdit = isHRAdmin && isEditMode;
+  
+  // Check if this is the user's own employee record
+  const isOwnRecord = user?.employee?.employee_id === employeeId;
+  
+  // Only show sensitive info for the employee themselves
+  const canViewSensitiveInfo = isOwnRecord;
+  
+  // Allow editing sensitive info if it's their own record and they're in edit mode
+  const canEditSensitiveInfo = isOwnRecord && isEditMode;
 
   // Loading state
   if (isLoading) {
@@ -130,53 +135,70 @@ export default function EditEmployeePage() {
     // Transform form data to API format
     const employeeData: EmployeeUpdateRequest = {};
 
-    // Only include person data if fields have changed
-    const personData: {
-      full_name?: string;
-      date_of_birth?: string;
-    } = {};
-    if (data.full_name !== employee.person.full_name) {
-      personData.full_name = data.full_name;
-    }
-    if (data.date_of_birth !== (employee.person.date_of_birth || '')) {
-      personData.date_of_birth = data.date_of_birth || undefined;
-    }
-    if (Object.keys(personData).length > 0) {
-      employeeData.person = personData;
+    // Only HR admins can update basic employee data
+    if (canEdit) {
+      // Only include person data if fields have changed
+      const personData: {
+        full_name?: string;
+        date_of_birth?: string;
+      } = {};
+      if (data.full_name !== employee.person.full_name) {
+        personData.full_name = data.full_name;
+      }
+      if (data.date_of_birth !== (employee.person.date_of_birth || '')) {
+        personData.date_of_birth = data.date_of_birth || undefined;
+      }
+      if (Object.keys(personData).length > 0) {
+        employeeData.person = personData;
+      }
+
+      // Include personal email for HR admins
+      const currentPersonalInfo = employee.person.personal_information;
+      if (data.personal_email !== (currentPersonalInfo?.personal_email || '')) {
+        if (!employeeData.personal_information) {
+          employeeData.personal_information = {};
+        }
+        employeeData.personal_information.personal_email = data.personal_email || undefined;
+      }
+
+      // Only include employee fields if they have changed
+      if (data.work_email !== (employee.work_email || '')) {
+        employeeData.work_email = data.work_email || undefined;
+      }
+      if (data.effective_start_date !== (employee.effective_start_date || '')) {
+        employeeData.effective_start_date = data.effective_start_date || undefined;
+      }
+      if (data.effective_end_date !== (employee.effective_end_date || '')) {
+        employeeData.effective_end_date = data.effective_end_date || undefined;
+      }
+      if (data.status !== employee.status) {
+        employeeData.status = data.status;
+      }
     }
 
-    // Only include personal information if fields have changed
-    const personalInfoData: {
-      personal_email?: string;
-      ssn?: string;
-      bank_account?: string;
-    } = {};
-    const currentPersonalInfo = employee.person.personal_information;
-    if (data.personal_email !== (currentPersonalInfo?.personal_email || '')) {
-      personalInfoData.personal_email = data.personal_email || undefined;
-    }
-    if (data.ssn !== (currentPersonalInfo?.ssn || '')) {
-      personalInfoData.ssn = data.ssn || undefined;
-    }
-    if (data.bank_account !== (currentPersonalInfo?.bank_account || '')) {
-      personalInfoData.bank_account = data.bank_account || undefined;
-    }
-    if (Object.keys(personalInfoData).length > 0) {
-      employeeData.personal_information = personalInfoData;
-    }
-
-    // Only include employee fields if they have changed
-    if (data.work_email !== (employee.work_email || '')) {
-      employeeData.work_email = data.work_email || undefined;
-    }
-    if (data.effective_start_date !== (employee.effective_start_date || '')) {
-      employeeData.effective_start_date = data.effective_start_date || undefined;
-    }
-    if (data.effective_end_date !== (employee.effective_end_date || '')) {
-      employeeData.effective_end_date = data.effective_end_date || undefined;
-    }
-    if (data.status !== employee.status) {
-      employeeData.status = data.status;
+    // Employees can only update their own sensitive information
+    if (canEditSensitiveInfo) {
+      const personalInfoData: {
+        personal_email?: string;
+        ssn?: string;
+        bank_account?: string;
+      } = {};
+      const currentPersonalInfo = employee.person.personal_information;
+      
+      // Only include sensitive fields for employees editing their own record
+      if (data.ssn !== (currentPersonalInfo?.ssn || '')) {
+        personalInfoData.ssn = data.ssn || undefined;
+      }
+      if (data.bank_account !== (currentPersonalInfo?.bank_account || '')) {
+        personalInfoData.bank_account = data.bank_account || undefined;
+      }
+      
+      if (Object.keys(personalInfoData).length > 0) {
+        if (!employeeData.personal_information) {
+          employeeData.personal_information = {};
+        }
+        Object.assign(employeeData.personal_information, personalInfoData);
+      }
     }
 
     updateEmployeeMutation.mutate(employeeData);
@@ -187,16 +209,68 @@ export default function EditEmployeePage() {
       {/* Header */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <h1 className="text-2xl font-bold text-gray-900">Edit Employee Profile</h1>
-          <p className="mt-1 text-sm text-gray-700">
-            Update information for {employee.person.full_name} (ID: {employee.employee_id})
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {isEditMode ? 'Edit Employee Profile' : employee.person.full_name}
+              </h1>
+              <p className="mt-1 text-sm text-gray-700">
+                {isEditMode 
+                  ? `Update information for ${employee.person.full_name} (ID: ${employee.employee_id})`
+                  : `Employee ID: ${employee.employee_id} • Status: `
+                }
+                {!isEditMode && (
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    employee.status === 'Active' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {employee.status}
+                  </span>
+                )}
+              </p>
+            </div>
+            {(isHRAdmin || isOwnRecord) && (
+              <div className="flex space-x-2">
+                {isEditMode ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditMode(false);
+                      reset({
+                        full_name: employee.person.full_name,
+                        date_of_birth: employee.person.date_of_birth || '',
+                        personal_email: employee.person.personal_information?.personal_email || '',
+                        ssn: employee.person.personal_information?.ssn || '',
+                        bank_account: employee.person.personal_information?.bank_account || '',
+                        work_email: employee.work_email || '',
+                        effective_start_date: employee.effective_start_date || '',
+                        effective_end_date: employee.effective_end_date || '',
+                        status: employee.status,
+                      });
+                    }}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Cancel Edit
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditMode(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    {isHRAdmin ? 'Edit Employee' : 'Edit My Information'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Form */}
       <div className="bg-white shadow rounded-lg">
-        <form onSubmit={handleSubmit(onSubmit)} className="px-4 py-5 sm:p-6">
+        <form onSubmit={canEdit ? handleSubmit(onSubmit) : undefined} className="px-4 py-5 sm:p-6">
           <div className="space-y-8">
             {/* Personal Information Section */}
             <div>
@@ -204,16 +278,20 @@ export default function EditEmployeePage() {
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
-                    Full Name *
+                    Full Name {canEdit && '*'}
                   </label>
-                  <input
-                    type="text"
-                    id="full_name"
-                    {...register('full_name')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter full name"
-                  />
-                  {errors.full_name && (
+                  {canEdit ? (
+                    <input
+                      type="text"
+                      id="full_name"
+                      {...register('full_name')}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter full name"
+                    />
+                  ) : (
+                    <div className="mt-1 py-2 px-3 text-gray-900">{employee.person.full_name}</div>
+                  )}
+                  {errors.full_name && canEdit && (
                     <p className="mt-1 text-sm text-red-600">{errors.full_name.message}</p>
                   )}
                 </div>
@@ -222,13 +300,22 @@ export default function EditEmployeePage() {
                   <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-700">
                     Date of Birth
                   </label>
-                  <input
-                    type="date"
-                    id="date_of_birth"
-                    {...register('date_of_birth')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  {errors.date_of_birth && (
+                  {canEdit ? (
+                    <input
+                      type="date"
+                      id="date_of_birth"
+                      {...register('date_of_birth')}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  ) : (
+                    <div className="mt-1 py-2 px-3 text-gray-900">
+                      {employee.person.date_of_birth 
+                        ? new Date(employee.person.date_of_birth).toLocaleDateString()
+                        : '-'
+                      }
+                    </div>
+                  )}
+                  {errors.date_of_birth && canEdit && (
                     <p className="mt-1 text-sm text-red-600">{errors.date_of_birth.message}</p>
                   )}
                 </div>
@@ -237,21 +324,28 @@ export default function EditEmployeePage() {
                   <label htmlFor="personal_email" className="block text-sm font-medium text-gray-700">
                     Personal Email
                   </label>
-                  <input
-                    type="email"
-                    id="personal_email"
-                    {...register('personal_email')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="personal@example.com"
-                  />
-                  {errors.personal_email && (
+                  {canEdit ? (
+                    <input
+                      type="email"
+                      id="personal_email"
+                      {...register('personal_email')}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="personal@example.com"
+                    />
+                  ) : (
+                    <div className="mt-1 py-2 px-3 text-gray-900">
+                      {employee.person.personal_information?.personal_email || '-'}
+                    </div>
+                  )}
+                  {errors.personal_email && canEdit && (
                     <p className="mt-1 text-sm text-red-600">{errors.personal_email.message}</p>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Sensitive Information Section */}
+            {/* Sensitive Information Section - Only show for employee themselves */}
+            {canViewSensitiveInfo && (
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">Sensitive Information</h3>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -259,14 +353,20 @@ export default function EditEmployeePage() {
                   <label htmlFor="ssn" className="block text-sm font-medium text-gray-700">
                     Social Security Number
                   </label>
-                  <input
-                    type="text"
-                    id="ssn"
-                    {...register('ssn')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="XXX-XX-XXXX"
-                  />
-                  {errors.ssn && (
+                  {canEditSensitiveInfo ? (
+                    <input
+                      type="text"
+                      id="ssn"
+                      {...register('ssn')}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="XXX-XX-XXXX"
+                    />
+                  ) : (
+                    <div className="mt-1 py-2 px-3 text-gray-900">
+                      {employee.person.personal_information?.ssn || '-'}
+                    </div>
+                  )}
+                  {errors.ssn && canEditSensitiveInfo && (
                     <p className="mt-1 text-sm text-red-600">{errors.ssn.message}</p>
                   )}
                 </div>
@@ -275,19 +375,26 @@ export default function EditEmployeePage() {
                   <label htmlFor="bank_account" className="block text-sm font-medium text-gray-700">
                     Bank Account
                   </label>
-                  <input
-                    type="text"
-                    id="bank_account"
-                    {...register('bank_account')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Account number"
-                  />
-                  {errors.bank_account && (
+                  {canEditSensitiveInfo ? (
+                    <input
+                      type="text"
+                      id="bank_account"
+                      {...register('bank_account')}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Account number"
+                    />
+                  ) : (
+                    <div className="mt-1 py-2 px-3 text-gray-900">
+                      {employee.person.personal_information?.bank_account || '-'}
+                    </div>
+                  )}
+                  {errors.bank_account && canEditSensitiveInfo && (
                     <p className="mt-1 text-sm text-red-600">{errors.bank_account.message}</p>
                   )}
                 </div>
               </div>
             </div>
+            )}
 
             {/* Employment Information Section */}
             <div>
@@ -297,14 +404,18 @@ export default function EditEmployeePage() {
                   <label htmlFor="work_email" className="block text-sm font-medium text-gray-700">
                     Work Email
                   </label>
-                  <input
-                    type="email"
-                    id="work_email"
-                    {...register('work_email')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="employee@company.com"
-                  />
-                  {errors.work_email && (
+                  {canEdit ? (
+                    <input
+                      type="email"
+                      id="work_email"
+                      {...register('work_email')}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="employee@company.com"
+                    />
+                  ) : (
+                    <div className="mt-1 py-2 px-3 text-gray-900">{employee.work_email || '-'}</div>
+                  )}
+                  {errors.work_email && canEdit && (
                     <p className="mt-1 text-sm text-red-600">{errors.work_email.message}</p>
                   )}
                 </div>
@@ -313,13 +424,22 @@ export default function EditEmployeePage() {
                   <label htmlFor="effective_start_date" className="block text-sm font-medium text-gray-700">
                     Start Date
                   </label>
-                  <input
-                    type="date"
-                    id="effective_start_date"
-                    {...register('effective_start_date')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  {errors.effective_start_date && (
+                  {canEdit ? (
+                    <input
+                      type="date"
+                      id="effective_start_date"
+                      {...register('effective_start_date')}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  ) : (
+                    <div className="mt-1 py-2 px-3 text-gray-900">
+                      {employee.effective_start_date 
+                        ? new Date(employee.effective_start_date).toLocaleDateString()
+                        : '-'
+                      }
+                    </div>
+                  )}
+                  {errors.effective_start_date && canEdit && (
                     <p className="mt-1 text-sm text-red-600">{errors.effective_start_date.message}</p>
                   )}
                 </div>
@@ -328,13 +448,22 @@ export default function EditEmployeePage() {
                   <label htmlFor="effective_end_date" className="block text-sm font-medium text-gray-700">
                     End Date (Optional)
                   </label>
-                  <input
-                    type="date"
-                    id="effective_end_date"
-                    {...register('effective_end_date')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  {errors.effective_end_date && (
+                  {canEdit ? (
+                    <input
+                      type="date"
+                      id="effective_end_date"
+                      {...register('effective_end_date')}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  ) : (
+                    <div className="mt-1 py-2 px-3 text-gray-900">
+                      {employee.effective_end_date 
+                        ? new Date(employee.effective_end_date).toLocaleDateString()
+                        : '-'
+                      }
+                    </div>
+                  )}
+                  {errors.effective_end_date && canEdit && (
                     <p className="mt-1 text-sm text-red-600">{errors.effective_end_date.message}</p>
                   )}
                 </div>
@@ -343,15 +472,27 @@ export default function EditEmployeePage() {
                   <label htmlFor="status" className="block text-sm font-medium text-gray-700">
                     Employee Status
                   </label>
-                  <select
-                    id="status"
-                    {...register('status')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                  {errors.status && (
+                  {canEdit ? (
+                    <select
+                      id="status"
+                      {...register('status')}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  ) : (
+                    <div className="mt-1 py-2 px-3 text-gray-900">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        employee.status === 'Active' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {employee.status}
+                      </span>
+                    </div>
+                  )}
+                  {errors.status && canEdit && (
                     <p className="mt-1 text-sm text-red-600">{errors.status.message}</p>
                   )}
                 </div>
@@ -369,24 +510,52 @@ export default function EditEmployeePage() {
               </div>
             )}
 
-            {/* Form Actions */}
-            <div className="flex justify-end space-x-4">
-              <button
-                type="button"
-                onClick={() => router.push('/employees')}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
-              
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? 'Updating...' : 'Update Employee'}
-              </button>
-            </div>
+            {/* Form Actions - Show in edit mode for HR admins or employees editing their own info */}
+            {(canEdit || canEditSensitiveInfo) && (
+              <div className="flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditMode(false);
+                    reset({
+                      full_name: employee.person.full_name,
+                      date_of_birth: employee.person.date_of_birth || '',
+                      personal_email: employee.person.personal_information?.personal_email || '',
+                      ssn: employee.person.personal_information?.ssn || '',
+                      bank_account: employee.person.personal_information?.bank_account || '',
+                      work_email: employee.work_email || '',
+                      effective_start_date: employee.effective_start_date || '',
+                      effective_end_date: employee.effective_end_date || '',
+                      status: employee.status,
+                    });
+                  }}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Cancel
+                </button>
+                
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Updating...' : 'Update Employee'}
+                </button>
+              </div>
+            )}
+
+            {/* Back to Directory Button - Only show in view mode */}
+            {!canEdit && (
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => router.push('/employees')}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Back to Employee Directory
+                </button>
+              </div>
+            )}
           </div>
         </form>
       </div>

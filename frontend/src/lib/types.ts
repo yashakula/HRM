@@ -13,6 +13,7 @@ export interface User {
   role: UserRole;
   is_active: boolean;
   created_at: string;
+  employee?: Employee; // Associated employee if exists
 }
 
 export interface LoginCredentials {

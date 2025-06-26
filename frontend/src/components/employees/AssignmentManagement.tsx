@@ -33,6 +33,7 @@ export default function AssignmentManagement({ employee }: AssignmentManagementP
   const isHRAdmin = useIsHRAdmin();
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Fetch employee assignments
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
@@ -94,6 +95,22 @@ export default function AssignmentManagement({ employee }: AssignmentManagementP
     mutationFn: (assignmentId: number) => assignmentApi.delete(assignmentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employeeAssignments', employee.employee_id] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      setDeleteError(null);
+      console.log('Assignment deleted successfully');
+    },
+    onError: (error: unknown) => {
+      console.error('Failed to delete assignment:', error);
+      const httpError = error as { response?: { status?: number } };
+      if (httpError?.response?.status === 403) {
+        setDeleteError('Permission denied: Only HR Administrators can delete assignments');
+        console.error('Permission denied: User may not have HR Admin privileges');
+      } else if (httpError?.response?.status === 404) {
+        setDeleteError('Assignment not found');
+        console.error('Assignment not found');
+      } else {
+        setDeleteError('Failed to delete assignment. Please try again.');
+      }
     },
   });
 
@@ -120,7 +137,10 @@ export default function AssignmentManagement({ employee }: AssignmentManagementP
   };
 
   const handleDeleteAssignment = (assignmentId: number, assignmentName: string) => {
+    console.log('isHRAdmin:', isHRAdmin);
     if (confirm(`Are you sure you want to remove the ${assignmentName} assignment?`)) {
+      console.log('Attempting to delete assignment:', assignmentId);
+      setDeleteError(null); // Clear any previous errors
       deleteAssignmentMutation.mutate(assignmentId);
     }
   };
@@ -187,6 +207,19 @@ export default function AssignmentManagement({ employee }: AssignmentManagementP
           </button>
         </div>
 
+        {/* Error Display */}
+        {deleteError && (
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+            <p className="text-red-600 text-sm">{deleteError}</p>
+            <button 
+              onClick={() => setDeleteError(null)}
+              className="mt-2 text-red-500 hover:text-red-700 text-xs underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Assignment List */}
         {assignmentsLoading ? (
           <div className="text-gray-600">Loading assignments...</div>
@@ -239,7 +272,7 @@ export default function AssignmentManagement({ employee }: AssignmentManagementP
                         className="text-red-600 hover:text-red-800 text-sm font-medium"
                         disabled={deleteAssignmentMutation.isPending}
                       >
-                        Remove
+                        {deleteAssignmentMutation.isPending ? 'Removing...' : 'Remove'}
                       </button>
                     </div>
                   </div>
