@@ -17,6 +17,12 @@ from . import schemas
 SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
 SESSION_EXPIRE_HOURS = 24
 
+# Cookie configuration (environment-aware for tunnel deployment)
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
+COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax")
+COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", None)
+TUNNEL_MODE = os.getenv("TUNNEL_MODE", "false").lower() == "true"
+
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -43,6 +49,25 @@ def verify_session_token(token: str) -> Optional[dict]:
         return data
     except (BadSignature, SignatureExpired):
         return None
+
+def get_cookie_config() -> dict:
+    """Get environment-aware cookie configuration"""
+    config = {
+        "httponly": True,
+        "secure": COOKIE_SECURE,
+        "samesite": COOKIE_SAMESITE
+    }
+    
+    # Add domain if specified (for tunnel deployment)
+    if COOKIE_DOMAIN:
+        config["domain"] = COOKIE_DOMAIN
+    
+    # In tunnel mode, ensure secure and samesite=none for cross-origin
+    if TUNNEL_MODE:
+        config["secure"] = True
+        config["samesite"] = "none"
+    
+    return config
 
 def get_user_by_username(db: Session, username: str) -> Optional[User]:
     """Get user by username"""

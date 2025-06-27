@@ -10,7 +10,8 @@ from ..auth import (
     get_current_active_user,
     get_employee_by_user_id,
     check_employee_ownership,
-    check_supervisor_relationship
+    check_supervisor_relationship,
+    get_cookie_config
 )
 from ..database import get_db
 from .. import models
@@ -71,13 +72,12 @@ def login_user(
     # Create session token
     session_token = create_session_token(user.user_id)
     
-    # Set secure session cookie (expires when browser closes)
+    # Set secure session cookie with environment-aware configuration
+    cookie_config = get_cookie_config()
     response.set_cookie(
         key="session_token",
         value=session_token,
-        httponly=True,
-        secure=False,  # Set to True in production with HTTPS
-        samesite="lax"
+        **cookie_config
         # No max_age = session cookie (expires when browser closes)
     )
     
@@ -109,11 +109,10 @@ def read_current_user(current_user: User = Depends(get_current_active_user), db:
 @router.post("/logout")
 def logout_user(response: Response):
     """Logout user by clearing session cookie"""
+    cookie_config = get_cookie_config()
     response.delete_cookie(
         key="session_token",
-        httponly=True,
-        secure=False,  # Set to True in production with HTTPS
-        samesite="lax"
+        **cookie_config
     )
     return {"message": "Successfully logged out"}
 

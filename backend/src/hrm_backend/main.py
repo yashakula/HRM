@@ -14,19 +14,37 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Add CORS middleware
+# Environment-aware CORS configuration
+def get_cors_origins():
+    """Get CORS origins from environment or use defaults"""
+    cors_origins_env = os.getenv("BACKEND_CORS_ORIGINS", "")
+    
+    # Default localhost origins for development
+    default_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000", 
+        "http://0.0.0.0:3000",
+    ]
+    
+    if cors_origins_env:
+        # Split environment variable by comma and add to defaults
+        env_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+        return default_origins + env_origins
+    
+    return default_origins
+
+# Add CORS middleware with environment-aware origins
+cors_origins = get_cors_origins()
+logger.info(f"CORS origins configured: {cors_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://0.0.0.0:3000",
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=[
         "Accept",
-        "Accept-Language",
+        "Accept-Language", 
         "Content-Language",
         "Content-Type",
         "Authorization",
