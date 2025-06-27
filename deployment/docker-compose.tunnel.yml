@@ -1,0 +1,64 @@
+# Cloudflare Tunnel Environment Overrides
+# This file extends the base docker-compose.yml for Cloudflare tunnel deployment
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.tunnel.yml up
+
+services:
+  # Cloudflare Tunnel Service
+  cloudflare-tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: hrm-tunnel
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN} --url http://frontend:3000
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+    restart: unless-stopped
+    networks:
+      - hrm_network
+    # volumes:
+      # Optional: Mount config file if using config-based setup
+      # - ./tunnel-config.yml:/etc/cloudflared/config.yml:ro
+
+  # Database - No external port exposure (internal only)
+  database:
+    # No ports exposed - internal network only
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hrms}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mysecretpassword}
+
+  # Backend - No external port exposure (accessible via tunnel)
+  backend:
+    # No ports exposed - accessible through tunnel only
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:mysecretpassword@database:5432/hrms}
+      CREATE_SEED_DATA: ${CREATE_SEED_DATA:-false}
+      NODE_ENV: ${NODE_ENV:-production}
+      # Cookie configuration for tunnel
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-none}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-.trycloudflare.com}
+      # CORS configuration
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS}
+      # Tunnel-specific settings
+      TUNNEL_MODE: ${TUNNEL_MODE:-true}
+      HTTPS_ONLY: ${HTTPS_ONLY:-true}
+      # Session configuration
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
+      SESSION_COOKIE_SAMESITE: ${SESSION_COOKIE_SAMESITE:-none}
+      SESSION_COOKIE_HTTPONLY: ${SESSION_COOKIE_HTTPONLY:-true}
+
+  # Frontend - No external port exposure (accessible via tunnel)
+  frontend:
+    # No ports exposed - accessible through tunnel only
+    build:
+      context: ../frontend
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NODE_ENV=${NODE_ENV:-production}
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NODE_ENV: ${NODE_ENV:-production}
+      # Frontend tunnel configuration
+      TUNNEL_DOMAIN: ${TUNNEL_DOMAIN}
+      HTTPS_ONLY: ${HTTPS_ONLY:-true}

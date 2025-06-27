@@ -59,8 +59,8 @@ parse_environment() {
     fi
     
     # Validate environment
-    if [[ "$ENVIRONMENT" != "dev" && "$ENVIRONMENT" != "prod" ]]; then
-        print_error "Invalid environment: $ENVIRONMENT. Use 'dev' or 'prod'"
+    if [[ "$ENVIRONMENT" != "dev" && "$ENVIRONMENT" != "prod" && "$ENVIRONMENT" != "tunnel" ]]; then
+        print_error "Invalid environment: $ENVIRONMENT. Use 'dev', 'prod', or 'tunnel'"
         exit 1
     fi
 }
@@ -75,6 +75,9 @@ load_env() {
             ;;
         "prod")
             env_file=".env.production"
+            ;;
+        "tunnel")
+            env_file=".env.tunnel"
             ;;
     esac
     
@@ -100,6 +103,9 @@ get_docker_compose_cmd() {
             ;;
         "prod")
             compose_files="$compose_files -f docker-compose.prod.yml"
+            ;;
+        "tunnel")
+            compose_files="$compose_files -f docker-compose.tunnel.yml"
             ;;
     esac
     
@@ -141,24 +147,30 @@ usage() {
     echo "  help        Show this help message"
     echo ""
     echo "Options:"
-    echo "  --env ENV   Specify environment: 'dev' or 'prod' (default: dev)"
+    echo "  --env ENV   Specify environment: 'dev', 'prod', or 'tunnel' (default: dev)"
     echo ""
     echo "Examples:"
     echo "  $0                         # Start containers in development mode"
     echo "  $0 start                   # Start containers in development mode"
     echo "  $0 start --env dev         # Start containers in development mode"
     echo "  $0 start --env prod        # Start containers in production mode"
-    echo "  $0 rebuild --env prod      # Rebuild and start in production mode"
-    echo "  $0 logs --env dev          # View development container logs"
+    echo "  $0 start --env tunnel      # Start containers with Cloudflare tunnel"
+    echo "  $0 rebuild --env tunnel    # Rebuild and start with tunnel"
+    echo "  $0 logs --env tunnel       # View tunnel container logs"
     echo ""
     echo "Environment Configurations:"
-    echo "  dev:  Exposes database (5432) and backend (8000) ports for direct access"
-    echo "        Uses .env.development configuration"
-    echo "        Includes volume mounts for live code reloading"
+    echo "  dev:    Exposes database (5432) and backend (8000) ports for direct access"
+    echo "          Uses .env.development configuration"
+    echo "          Includes volume mounts for live code reloading"
     echo ""
-    echo "  prod: Only exposes frontend (3000) port for security"
-    echo "        Uses .env.production configuration"
-    echo "        No volume mounts, uses built images"
+    echo "  prod:   Only exposes frontend (3000) port for security"
+    echo "          Uses .env.production configuration"
+    echo "          No volume mounts, uses built images"
+    echo ""
+    echo "  tunnel: Accessible via Cloudflare tunnel only"
+    echo "          Uses .env.tunnel configuration"
+    echo "          Includes cloudflare-tunnel service"
+    echo "          Requires CLOUDFLARE_TUNNEL_TOKEN environment variable"
 }
 
 # Function to navigate to deployment directory
@@ -197,6 +209,17 @@ start_containers() {
                 print_status ""
                 print_status "Production mode: Only frontend exposed for security"
                 print_warning "Backend and database are only accessible internally"
+                ;;
+            "tunnel")
+                print_status "  - Application: Available via Cloudflare tunnel"
+                if [ -n "$TUNNEL_DOMAIN" ]; then
+                    print_status "  - Tunnel URL: https://$TUNNEL_DOMAIN"
+                else
+                    print_warning "  - TUNNEL_DOMAIN not set, check tunnel logs for URL"
+                fi
+                print_status ""
+                print_status "Tunnel mode: Application accessible via Cloudflare tunnel"
+                print_warning "All services secured behind tunnel - no direct local access"
                 ;;
         esac
     else
