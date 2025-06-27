@@ -1,5 +1,61 @@
 # HRM Implementation Log
 
+## Latest Updates
+
+### ✅ Cloudflare Tunnel Deployment with Authentication Fix (December 27, 2025)
+
+**Complete Production Tunnel Implementation:**
+- **Cloudflare Tunnel Integration**: Full Docker-based tunnel deployment with authentication
+- **Cookie Authentication Fix**: Resolved cross-origin cookie issues for tunnel domains
+- **Multi-Environment Framework**: Extended dev/prod architecture with tunnel support
+- **Production-Ready Security**: Secure cookie handling across tunnel domains
+
+**Authentication System Enhancements:**
+- **Environment-Aware Cookies**: Dynamic cookie configuration based on deployment mode
+- **Tunnel Compatibility**: Proper `secure=true`, `samesite=none`, `domain=.yashakula.com` settings
+- **CORS Resolution**: Backend configured to accept requests from tunnel domains
+- **Frontend Build Fix**: Next.js builds with correct tunnel API URLs (no more localhost references)
+
+**Technical Implementation:**
+- **Cookie Configuration**: Environment variables control cookie security settings
+- **Frontend Dockerfile**: Build-time environment variable support for API URLs
+- **Backend CORS**: Dynamic origin configuration from environment variables
+- **Tunnel Service**: Cloudflare tunnel integrated into Docker Compose
+
+**Files Added/Enhanced:**
+- `deployment/.env.tunnel` - Tunnel-specific environment configuration
+- `deployment/docker-compose.tunnel.yml` - Cloudflare tunnel service definition
+- `deployment/TUNNEL_SETUP.md` - Comprehensive tunnel setup and troubleshooting guide
+- `backend/src/hrm_backend/auth.py` - Environment-aware cookie configuration
+- `backend/src/hrm_backend/main.py` - Dynamic CORS origins support
+- `frontend/Dockerfile` - Build-time environment variable support
+- `deployment/run_containers.sh` - Tunnel environment support
+
+**Deployment Commands:**
+```bash
+./deployment/run_containers.sh start --env dev     # Development (localhost)
+./deployment/run_containers.sh start --env prod    # Production (local testing)
+./deployment/run_containers.sh start --env tunnel  # Cloudflare tunnel (production)
+```
+
+**Authentication Flow:**
+1. Frontend calls `https://yashakula.com/api/v1/auth/login`
+2. Cloudflare tunnel routes to internal backend
+3. Backend sets secure cookies with tunnel-compatible attributes  
+4. Browser stores cookies for tunnel domain
+5. Session persists across all tunnel pages
+
+**Current Status**: ✅ Authentication working perfectly through Cloudflare tunnel at https://yashakula.com
+
+**Previous Infrastructure Enhancement:** Multi-Environment Docker Deployment Architecture
+- **Consolidated Deployment Files**: Moved all Docker and environment configuration to `deployment/` folder
+- **Multi-Environment Support**: Implemented separate development and production configurations
+- **Enhanced Security**: Production mode restricts database/backend access to internal networking only
+- **Environment Management**: Automatic environment file loading (`.env.development`/`.env.production`)
+- **Enhanced Deployment Script**: Support for `--env dev/prod/tunnel` flags with comprehensive status reporting
+
+---
+
 ## User Story Implementation Status
 
 ### ✅ US-01: Create Employee Profile (COMPLETED)
