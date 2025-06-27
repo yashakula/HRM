@@ -30,9 +30,9 @@ def test_profile_page_access_all_roles(integration_client: IntegrationTestClient
     integration_client.post("/api/v1/auth/logout")
 
 
-def test_employee_directory_restrictions(integration_client: IntegrationTestClient):
-    """Test that employee directory is properly restricted"""
-    # Test Employee cannot access employee directory
+def test_search_page_restrictions(integration_client: IntegrationTestClient):
+    """Test that search page is properly restricted"""
+    # Test Employee cannot access search page
     login_response = integration_client.post("/api/v1/auth/login", json={
         "username": "employee1", 
         "password": "emp123"
@@ -40,18 +40,18 @@ def test_employee_directory_restrictions(integration_client: IntegrationTestClie
     assert login_response.status_code == 200
     
     response = integration_client.post("/api/v1/auth/validate-page-access", json={
-        "page_identifier": "employees"
+        "page_identifier": "search"
     })
     assert response.status_code == 200
     
     data = response.json()
     assert data["access_granted"] is False
     assert data["permissions"]["can_view"] is False
-    assert "Only HR Admin and Supervisors can access employee directory" in data["permissions"]["message"]
+    assert "Only HR Admin and Supervisors can access search functionality" in data["permissions"]["message"]
     
     integration_client.post("/api/v1/auth/logout")
     
-    # Test HR Admin can access employee directory
+    # Test HR Admin can access search page
     login_response = integration_client.post("/api/v1/auth/login", json={
         "username": "hr_admin", 
         "password": "admin123"
@@ -59,7 +59,7 @@ def test_employee_directory_restrictions(integration_client: IntegrationTestClie
     assert login_response.status_code == 200
     
     response = integration_client.post("/api/v1/auth/validate-page-access", json={
-        "page_identifier": "employees"
+        "page_identifier": "search"
     })
     assert response.status_code == 200
     
@@ -162,12 +162,12 @@ def test_role_based_navigation_simulation(integration_client: IntegrationTestCli
     assert profile_access.status_code == 200
     assert profile_access.json()["access_granted"] is True
     
-    # Employee directory - should fail
-    employees_access = integration_client.post("/api/v1/auth/validate-page-access", json={
-        "page_identifier": "employees"
+    # Search page - should fail
+    search_access = integration_client.post("/api/v1/auth/validate-page-access", json={
+        "page_identifier": "search"
     })
-    assert employees_access.status_code == 200
-    assert employees_access.json()["access_granted"] is False
+    assert search_access.status_code == 200
+    assert search_access.json()["access_granted"] is False
     
     # Departments - should fail
     departments_access = integration_client.post("/api/v1/auth/validate-page-access", json={

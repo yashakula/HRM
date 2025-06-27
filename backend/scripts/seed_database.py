@@ -32,84 +32,279 @@ def get_password_hash(password: str) -> str:
     """Hash a password using bcrypt"""
     return pwd_context.hash(password)
 
-# Seed data definitions (copied from seed_data.py to avoid FastAPI imports)
+# Comprehensive seed data with 15 employees across all departments
 SEED_USERS = [
+    # HR Admins (2)
     {
         "username": "hr_admin",
-        "email": "hr.admin@company.com", 
+        "email": "charlie.brown@company.com", 
         "password": "admin123",
         "role": models.UserRole.HR_ADMIN
     },
     {
+        "username": "hr_admin2",
+        "email": "sarah.wilson@company.com",
+        "password": "admin123",
+        "role": models.UserRole.HR_ADMIN
+    },
+    
+    # Supervisors (4)
+    {
         "username": "supervisor1",
-        "email": "supervisor1@company.com",
+        "email": "robert.smith@company.com",
         "password": "super123", 
         "role": models.UserRole.SUPERVISOR
     },
     {
+        "username": "supervisor2",
+        "email": "maria.garcia@company.com",
+        "password": "super123",
+        "role": models.UserRole.SUPERVISOR
+    },
+    {
+        "username": "supervisor3",
+        "email": "james.chen@company.com",
+        "password": "super123",
+        "role": models.UserRole.SUPERVISOR
+    },
+    {
+        "username": "supervisor4",
+        "email": "lisa.thompson@company.com",
+        "password": "super123",
+        "role": models.UserRole.SUPERVISOR
+    },
+    
+    # Employees (9)
+    {
         "username": "employee1",
-        "email": "employee1@company.com",
+        "email": "alice.johnson@company.com",
+        "password": "emp123",
+        "role": models.UserRole.EMPLOYEE
+    },
+    {
+        "username": "employee2",
+        "email": "diana.wilson@company.com",
+        "password": "emp123",
+        "role": models.UserRole.EMPLOYEE
+    },
+    {
+        "username": "employee3",
+        "email": "edward.davis@company.com",
+        "password": "emp123",
+        "role": models.UserRole.EMPLOYEE
+    },
+    {
+        "username": "employee4",
+        "email": "michael.rodriguez@company.com",
+        "password": "emp123",
+        "role": models.UserRole.EMPLOYEE
+    },
+    {
+        "username": "employee5",
+        "email": "jennifer.lee@company.com",
+        "password": "emp123",
+        "role": models.UserRole.EMPLOYEE
+    },
+    {
+        "username": "employee6",
+        "email": "david.kim@company.com",
+        "password": "emp123",
+        "role": models.UserRole.EMPLOYEE
+    },
+    {
+        "username": "employee7",
+        "email": "emma.taylor@company.com",
+        "password": "emp123",
+        "role": models.UserRole.EMPLOYEE
+    },
+    {
+        "username": "employee8",
+        "email": "alex.murphy@company.com",
+        "password": "emp123",
+        "role": models.UserRole.EMPLOYEE
+    },
+    {
+        "username": "employee9",
+        "email": "sophia.martinez@company.com",
         "password": "emp123",
         "role": models.UserRole.EMPLOYEE
     }
 ]
 
 SEED_EMPLOYEES = [
+    # Engineering Department (4 employees)
     {
-        "person": {"full_name": "Alice Johnson", "date_of_birth": "1985-03-15"},
+        "person": {"full_name": "Alice Johnson", "date_of_birth": "1995-08-12"},
         "personal_information": {
-            "personal_email": "alice.johnson@personal.com",
+            "personal_email": "alice.j.personal@gmail.com",
             "ssn": "123-45-6789",
-            "bank_account": "ACC123456789"
+            "bank_account": "CHK123456789"
         },
         "work_email": "alice.johnson@company.com",
-        "effective_start_date": "2020-01-15",
-        "linked_username": "employee1"  # Links to employee1 user
+        "effective_start_date": "2023-06-15",
+        "linked_username": "employee1"
     },
     {
-        "person": {"full_name": "Bob Smith", "date_of_birth": "1990-07-22"},
+        "person": {"full_name": "Robert 'Bob' Smith", "date_of_birth": "1985-03-22"},
         "personal_information": {
-            "personal_email": "bob.smith@personal.com", 
+            "personal_email": "bob.smith.dev@outlook.com",
             "ssn": "234-56-7890",
-            "bank_account": "ACC234567890"
+            "bank_account": "SAV987654321"
         },
-        "work_email": "bob.smith@company.com",
-        "effective_start_date": "2021-03-01",
-        "linked_username": "supervisor1"  # Links to supervisor1 user
+        "work_email": "robert.smith@company.com",
+        "effective_start_date": "2018-09-10",
+        "linked_username": "supervisor1"
     },
     {
-        "person": {"full_name": "Charlie Brown", "date_of_birth": "1988-11-08"},
+        "person": {"full_name": "Michael Rodriguez", "date_of_birth": "1988-11-30"},
         "personal_information": {
-            "personal_email": "charlie.brown@personal.com",
+            "personal_email": "m.rodriguez.tech@protonmail.com",
             "ssn": "345-67-8901",
-            "bank_account": "ACC345678901"
+            "bank_account": "CHK445566778"
+        },
+        "work_email": "michael.rodriguez@company.com",
+        "effective_start_date": "2020-03-02",
+        "linked_username": "employee4"
+    },
+    {
+        "person": {"full_name": "David Kim", "date_of_birth": "1993-02-14"},
+        "personal_information": {
+            "personal_email": "david.kim.coding@yahoo.com",
+            "ssn": "456-78-9012",
+            "bank_account": "SAV112233445"
+        },
+        "work_email": "david.kim@company.com",
+        "effective_start_date": "2022-01-10",
+        "linked_username": "employee6"
+    },
+    
+    # Marketing Department (3 employees)
+    {
+        "person": {"full_name": "Maria Garcia", "date_of_birth": "1987-05-18"},
+        "personal_information": {
+            "personal_email": "maria.garcia.marketing@gmail.com",
+            "ssn": "567-89-0123",
+            "bank_account": "CHK778899001"
+        },
+        "work_email": "maria.garcia@company.com",
+        "effective_start_date": "2019-07-22",
+        "linked_username": "supervisor2"
+    },
+    {
+        "person": {"full_name": "Jennifer Lee", "date_of_birth": "1991-09-25"},
+        "personal_information": {
+            "personal_email": "jen.lee.creative@icloud.com",
+            "ssn": "678-90-1234",
+            "bank_account": "SAV334455667"
+        },
+        "work_email": "jennifer.lee@company.com",
+        "effective_start_date": "2021-11-08",
+        "linked_username": "employee5"
+    },
+    {
+        "person": {"full_name": "Emma Taylor", "date_of_birth": "1994-04-07"},
+        "personal_information": {
+            "personal_email": "emma.taylor.content@hotmail.com",
+            "ssn": "789-01-2345",
+            "bank_account": "CHK556677889"
+        },
+        "work_email": "emma.taylor@company.com",
+        "effective_start_date": "2023-02-20",
+        "linked_username": "employee7"
+    },
+    
+    # Human Resources Department (3 employees)
+    {
+        "person": {"full_name": "Charles 'Charlie' Brown", "date_of_birth": "1982-12-25"},
+        "personal_information": {
+            "personal_email": "charlie.brown.hr@protonmail.com",
+            "ssn": "890-12-3456",
+            "bank_account": "SAV667788990"
         },
         "work_email": "charlie.brown@company.com",
-        "effective_start_date": "2019-06-10",
-        "linked_username": "hr_admin"  # Links to hr_admin user
+        "effective_start_date": "2016-01-03",
+        "linked_username": "hr_admin"
+    },
+    {
+        "person": {"full_name": "Sarah Wilson", "date_of_birth": "1984-07-11"},
+        "personal_information": {
+            "personal_email": "sarah.wilson.people@gmail.com",
+            "ssn": "901-23-4567",
+            "bank_account": "CHK889900112"
+        },
+        "work_email": "sarah.wilson@company.com",
+        "effective_start_date": "2017-04-15",
+        "linked_username": "hr_admin2"
     },
     {
         "person": {"full_name": "Diana Wilson", "date_of_birth": "1992-04-30"},
         "personal_information": {
-            "personal_email": "diana.wilson@personal.com",
-            "ssn": "456-78-9012",
-            "bank_account": "ACC456789012"
+            "personal_email": "diana.wilson.recruitment@outlook.com",
+            "ssn": "012-34-5678",
+            "bank_account": "SAV223344556"
         },
-        "work_email": "diana.wilson@company.com", 
-        "effective_start_date": "2022-08-15"
-        # No linked_username - this employee has no user account
+        "work_email": "diana.wilson@company.com",
+        "effective_start_date": "2022-08-15",
+        "linked_username": "employee2"
+    },
+    
+    # Finance Department (3 employees)
+    {
+        "person": {"full_name": "James Chen", "date_of_birth": "1983-10-09"},
+        "personal_information": {
+            "personal_email": "james.chen.finance@yahoo.com",
+            "ssn": "123-45-6780",
+            "bank_account": "CHK445566779"
+        },
+        "work_email": "james.chen@company.com",
+        "effective_start_date": "2018-06-25",
+        "linked_username": "supervisor3"
     },
     {
-        "person": {"full_name": "Edward Davis", "date_of_birth": "1983-12-03"},
+        "person": {"full_name": "Edward Davis", "date_of_birth": "1980-12-03"},
         "personal_information": {
-            "personal_email": "edward.davis@personal.com",
-            "ssn": "567-89-0123",
-            "bank_account": "ACC567890123"
+            "personal_email": "edward.davis.accounting@protonmail.com",
+            "ssn": "234-56-7801",
+            "bank_account": "SAV778899012"
         },
         "work_email": "edward.davis@company.com",
-        "effective_start_date": "2018-02-20",
-        "effective_end_date": "2023-12-31"  # Inactive employee
-        # No linked_username - this employee has no user account
+        "effective_start_date": "2015-02-20",
+        "linked_username": "employee3"
+    },
+    {
+        "person": {"full_name": "Alex Murphy", "date_of_birth": "1989-06-16"},
+        "personal_information": {
+            "personal_email": "alex.murphy.numbers@gmail.com",
+            "ssn": "345-67-8902",
+            "bank_account": "CHK990011223"
+        },
+        "work_email": "alex.murphy@company.com",
+        "effective_start_date": "2021-09-13",
+        "linked_username": "employee8"
+    },
+    
+    # Operations Department (2 employees)
+    {
+        "person": {"full_name": "Lisa Thompson", "date_of_birth": "1986-01-28"},
+        "personal_information": {
+            "personal_email": "lisa.thompson.ops@icloud.com",
+            "ssn": "456-78-9013",
+            "bank_account": "SAV112233446"
+        },
+        "work_email": "lisa.thompson@company.com",
+        "effective_start_date": "2019-12-02",
+        "linked_username": "supervisor4"
+    },
+    {
+        "person": {"full_name": "Sophia Martinez", "date_of_birth": "1996-03-21"},
+        "personal_information": {
+            "personal_email": "sophia.martinez.logistics@hotmail.com",
+            "ssn": "567-89-0124",
+            "bank_account": "CHK334455668"
+        },
+        "work_email": "sophia.martinez@company.com",
+        "effective_start_date": "2024-01-08",
+        "linked_username": "employee9"
     }
 ]
 
@@ -164,11 +359,30 @@ SEED_ASSIGNMENT_TYPES = [
 ]
 
 SEED_ASSIGNMENTS = [
-    {"employee_name": "Alice Johnson", "assignment_type": "Senior Software Engineer", "department_name": "Engineering", "supervisor_name": "Bob Smith", "start_date": "2020-01-15", "is_primary": True},
-    {"employee_name": "Bob Smith", "assignment_type": "Engineering Manager", "department_name": "Engineering", "start_date": "2021-03-01", "is_primary": True},
-    {"employee_name": "Charlie Brown", "assignment_type": "Marketing Manager", "department_name": "Marketing", "start_date": "2019-06-10", "is_primary": True},
-    {"employee_name": "Diana Wilson", "assignment_type": "HR Specialist", "department_name": "Human Resources", "supervisor_name": "Charlie Brown", "start_date": "2022-08-15", "is_primary": True},
-    {"employee_name": "Edward Davis", "assignment_type": "Financial Analyst", "department_name": "Finance", "start_date": "2018-02-20", "end_date": "2023-12-31", "is_primary": True},
+    # Engineering Department (4 employees)
+    {"employee_name": "Alice Johnson", "assignment_type": "Software Engineer", "department_name": "Engineering", "supervisor_name": "Robert 'Bob' Smith", "start_date": "2023-06-15", "is_primary": True},
+    {"employee_name": "Robert 'Bob' Smith", "assignment_type": "Engineering Manager", "department_name": "Engineering", "start_date": "2018-09-10", "is_primary": True},
+    {"employee_name": "Michael Rodriguez", "assignment_type": "Senior Software Engineer", "department_name": "Engineering", "supervisor_name": "Robert 'Bob' Smith", "start_date": "2020-03-02", "is_primary": True},
+    {"employee_name": "David Kim", "assignment_type": "DevOps Engineer", "department_name": "Engineering", "supervisor_name": "Robert 'Bob' Smith", "start_date": "2022-01-10", "is_primary": True},
+    
+    # Marketing Department (3 employees)
+    {"employee_name": "Maria Garcia", "assignment_type": "Marketing Manager", "department_name": "Marketing", "start_date": "2019-07-22", "is_primary": True},
+    {"employee_name": "Jennifer Lee", "assignment_type": "Marketing Specialist", "department_name": "Marketing", "supervisor_name": "Maria Garcia", "start_date": "2021-11-08", "is_primary": True},
+    {"employee_name": "Emma Taylor", "assignment_type": "Content Creator", "department_name": "Marketing", "supervisor_name": "Maria Garcia", "start_date": "2023-02-20", "is_primary": True},
+    
+    # Human Resources Department (3 employees)
+    {"employee_name": "Charles 'Charlie' Brown", "assignment_type": "HR Manager", "department_name": "Human Resources", "start_date": "2016-01-03", "is_primary": True},
+    {"employee_name": "Sarah Wilson", "assignment_type": "HR Manager", "department_name": "Human Resources", "start_date": "2017-04-15", "is_primary": True},
+    {"employee_name": "Diana Wilson", "assignment_type": "Recruiter", "department_name": "Human Resources", "supervisor_name": "Charles 'Charlie' Brown", "start_date": "2022-08-15", "is_primary": True},
+    
+    # Finance Department (3 employees)
+    {"employee_name": "James Chen", "assignment_type": "Finance Manager", "department_name": "Finance", "start_date": "2018-06-25", "is_primary": True},
+    {"employee_name": "Edward Davis", "assignment_type": "Accountant", "department_name": "Finance", "supervisor_name": "James Chen", "start_date": "2015-02-20", "is_primary": True},
+    {"employee_name": "Alex Murphy", "assignment_type": "Financial Analyst", "department_name": "Finance", "supervisor_name": "James Chen", "start_date": "2021-09-13", "is_primary": True},
+    
+    # Operations Department (2 employees)
+    {"employee_name": "Lisa Thompson", "assignment_type": "Operations Manager", "department_name": "Operations", "start_date": "2019-12-02", "is_primary": True},
+    {"employee_name": "Sophia Martinez", "assignment_type": "Operations Coordinator", "department_name": "Operations", "supervisor_name": "Lisa Thompson", "start_date": "2024-01-08", "is_primary": True},
 ]
 
 # Configure logging
@@ -481,16 +695,16 @@ Commands:
   help      Show this help message
 
 Seed Data Includes:
-  👥 3 Users: hr_admin, supervisor1, employee1
+  👥 15 Users: hr_admin, hr_admin2, supervisor1-4, employee1-9
   🏢 5 Departments: Engineering, Marketing, HR, Finance, Operations  
-  👔 15 Assignment Types: Various roles across departments
-  👤 5 Employees: Sample employee profiles
-  📋 5 Assignments: Employee-role mappings with supervisors
+  👔 16 Assignment Types: Various roles across departments
+  👤 15 Employees: Comprehensive employee profiles across all departments
+  📋 15 Assignments: Employee-role mappings with proper supervisor relationships
 
-Login Credentials:
-  HR Admin:    hr_admin / admin123
-  Supervisor:  supervisor1 / super123  
-  Employee:    employee1 / emp123
+Sample Login Credentials:
+  HR Admin:    hr_admin / admin123, hr_admin2 / admin123
+  Supervisors: supervisor1-4 / super123  
+  Employees:   employee1-9 / emp123
 
 Requirements:
   - Database container must be running: docker-compose up -d database

@@ -37,8 +37,8 @@ export default function Navbar() {
           condition: true
         },
         {
-          href: '/employees',
-          label: 'Employees',
+          href: '/search',
+          label: 'Search Employees',
           condition: true
         },
         {
@@ -50,11 +50,6 @@ export default function Navbar() {
           href: '/departments',
           label: 'Departments',
           condition: true
-        },
-        {
-          href: '/search',
-          label: 'Search',
-          condition: true
         }
       );
     } else if (userRole === UserRole.SUPERVISOR) {
@@ -65,8 +60,8 @@ export default function Navbar() {
           condition: true
         },
         {
-          href: '/employees',
-          label: 'My Team',
+          href: '/search',
+          label: 'Search Employees',
           condition: true
         },
         {
