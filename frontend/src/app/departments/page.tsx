@@ -2,12 +2,24 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '@/store/authStore';
 import { departmentApi, Department, DepartmentCreate, DepartmentUpdate } from '@/lib/api/departments';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { ActionButton, useUIPermissions } from '@/components/auth/ConditionalRender';
 
 export default function DepartmentsPage() {
-  const { user } = useAuthStore();
+  return (
+    <ProtectedRoute 
+      pageIdentifier="departments" 
+      requiredPermissions={['view']}
+    >
+      <DepartmentsContent />
+    </ProtectedRoute>
+  );
+}
+
+function DepartmentsContent() {
   const queryClient = useQueryClient();
+  const { showIf } = useUIPermissions('departments');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
@@ -23,9 +35,6 @@ export default function DepartmentsPage() {
     assignment_types_to_remove: []
   });
   const [newAssignmentType, setNewAssignmentType] = useState('');
-
-  // Check if user is HR Admin
-  const isHrAdmin = user?.role === 'HR_ADMIN';
 
   // Fetch departments
   const { data: departments, isLoading, error } = useQuery({
@@ -192,17 +201,20 @@ export default function DepartmentsPage() {
           </p>
         </div>
         
-        {isHrAdmin && (
+        <ActionButton
+          action="create"
+          pageIdentifier="departments"
+        >
           <button
             onClick={() => setIsCreateDialogOpen(true)}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             ➕ Add Department
           </button>
-        )}
+        </ActionButton>
       </div>
 
-      {!isHrAdmin && (
+      {!showIf('create') && (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-blue-800">
             You have read-only access to departments. Contact HR Admin to make changes.
@@ -220,8 +232,11 @@ export default function DepartmentsPage() {
                   ID: {department.department_id}
                 </span>
               </div>
-              {isHrAdmin && (
-                <div className="flex gap-2">
+              <div className="flex gap-2">
+                <ActionButton
+                  action="edit"
+                  pageIdentifier="departments"
+                >
                   <button
                     onClick={() => handleEdit(department)}
                     className="p-2 text-blue-600 hover:bg-blue-50 rounded"
@@ -229,6 +244,12 @@ export default function DepartmentsPage() {
                   >
                     ✏️
                   </button>
+                </ActionButton>
+                
+                <ActionButton
+                  action="delete"
+                  pageIdentifier="departments"
+                >
                   <button
                     onClick={() => handleDelete(department)}
                     disabled={deleteMutation.isPending}
@@ -237,8 +258,8 @@ export default function DepartmentsPage() {
                   >
                     🗑️
                   </button>
-                </div>
-              )}
+                </ActionButton>
+              </div>
             </div>
             <p className="text-gray-800 mb-3">
               {department.description || 'No description provided'}
@@ -270,7 +291,7 @@ export default function DepartmentsPage() {
           <div className="text-6xl mb-4">🏢</div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No departments found</h3>
           <p className="text-gray-700 mb-4">Get started by creating your first department</p>
-          {isHrAdmin && (
+          {showIf('create') && (
             <button
               onClick={() => setIsCreateDialogOpen(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"

@@ -156,3 +156,26 @@ export interface SupervisorAssignmentCreate {
   effective_start_date: string;
   effective_end_date?: string;
 }
+
+// Page access validation types
+export interface PageAccessRequest {
+  page_identifier: string;
+  resource_id?: number; // For resource-specific pages like employee/123
+}
+
+export interface PageAccessPermissions {
+  can_view: boolean;
+  can_edit: boolean;
+  can_create: boolean;
+  can_delete: boolean;
+  message: string;
+  user_role: string;
+  required_permissions: string[];
+}
+
+export interface PageAccessResponse {
+  page_identifier: string;
+  resource_id?: number;
+  permissions: PageAccessPermissions;
+  access_granted: boolean;
+}

@@ -8,8 +8,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { apiClient } from '@/lib/api';
 import { EmployeeUpdateRequest } from '@/lib/types';
-import { useIsHRAdmin, useAuthStore } from '@/store/authStore';
+import { useAuthStore } from '@/store/authStore';
 import AssignmentManagement from '@/components/employees/AssignmentManagement';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 // Form validation schema
 const employeeUpdateSchema = z.object({
@@ -32,15 +33,29 @@ const employeeUpdateSchema = z.object({
 type EmployeeFormData = z.infer<typeof employeeUpdateSchema>;
 
 export default function EditEmployeePage() {
-  const router = useRouter();
   const params = useParams();
+  const employeeId = parseInt(params.id as string);
+
+  return (
+    <ProtectedRoute 
+      pageIdentifier="employees/edit" 
+      resourceId={employeeId}
+      requiredPermissions={['view', 'edit']}
+    >
+      <EditEmployeeForm employeeId={employeeId} />
+    </ProtectedRoute>
+  );
+}
+
+function EditEmployeeForm({ employeeId }: { employeeId: number }) {
+  const router = useRouter();
   const queryClient = useQueryClient();
-  const isHRAdmin = useIsHRAdmin();
   const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  const employeeId = parseInt(params.id as string);
+  // Role checking
+  const isHRAdmin = user?.role === 'HR_ADMIN';
 
   // Fetch existing employee data
   const { data: employee, isLoading, error } = useQuery({

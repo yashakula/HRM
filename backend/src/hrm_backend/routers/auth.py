@@ -170,7 +170,7 @@ def _get_page_permissions(
                 required_permissions=["HR_ADMIN"]
             )
     
-    # Departments management - HR Admin only
+    # Departments management - HR Admin and Supervisors only
     elif page_identifier == "departments" or page_identifier.startswith("departments/"):
         if user_role == UserRole.HR_ADMIN:
             return schemas.PageAccessPermissions(
@@ -179,12 +179,19 @@ def _get_page_permissions(
                 user_role=user_role.value,
                 required_permissions=["HR_ADMIN"]
             )
+        elif user_role == UserRole.SUPERVISOR:
+            return schemas.PageAccessPermissions(
+                can_view=True, can_edit=False, can_create=False, can_delete=False,
+                message="Supervisors can view departments",
+                user_role=user_role.value,
+                required_permissions=["SUPERVISOR"]
+            )
         else:
             return schemas.PageAccessPermissions(
                 can_view=False, can_edit=False, can_create=False, can_delete=False,
-                message="Only HR Admin can manage departments",
+                message="Only HR Admin and Supervisors can access departments",
                 user_role=user_role.value,
-                required_permissions=["HR_ADMIN"]
+                required_permissions=["HR_ADMIN", "SUPERVISOR"]
             )
     
     # Employee profile pages with specific employee ID
@@ -277,14 +284,38 @@ def _get_page_permissions(
                 required_permissions=["authenticated"]
             )
     
-    # Employee search/list page - all authenticated users
-    elif page_identifier == "employees" or page_identifier == "employees/search":
+    # Profile page - all authenticated users can access their own profile
+    elif page_identifier == "profile":
         return schemas.PageAccessPermissions(
-            can_view=True, can_edit=False, can_create=False, can_delete=False,
-            message="All authenticated users can search employees",
+            can_view=True, can_edit=True, can_create=False, can_delete=False,
+            message="All authenticated users can view and edit their own profile",
             user_role=user_role.value,
             required_permissions=["authenticated"]
         )
+    
+    # Employee search/list page - HR Admin and Supervisors only
+    elif page_identifier == "employees" or page_identifier == "employees/search":
+        if user_role == UserRole.HR_ADMIN:
+            return schemas.PageAccessPermissions(
+                can_view=True, can_edit=False, can_create=False, can_delete=False,
+                message="HR Admin can search all employees",
+                user_role=user_role.value,
+                required_permissions=["HR_ADMIN"]
+            )
+        elif user_role == UserRole.SUPERVISOR:
+            return schemas.PageAccessPermissions(
+                can_view=True, can_edit=False, can_create=False, can_delete=False,
+                message="Supervisors can view team members",
+                user_role=user_role.value,
+                required_permissions=["SUPERVISOR"]
+            )
+        else:
+            return schemas.PageAccessPermissions(
+                can_view=False, can_edit=False, can_create=False, can_delete=False,
+                message="Only HR Admin and Supervisors can access employee directory",
+                user_role=user_role.value,
+                required_permissions=["HR_ADMIN", "SUPERVISOR"]
+            )
     
     # Default case - authenticated users can view
     else:

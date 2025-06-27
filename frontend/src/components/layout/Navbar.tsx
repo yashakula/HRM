@@ -17,45 +17,94 @@ export default function Navbar() {
 
   if (!user) return null;
 
+  // Define role-based navigation items
+  const getNavigationItems = () => {
+    const items = [];
+
+    // Profile is available to all authenticated users
+    items.push({
+      href: '/profile',
+      label: 'My Profile',
+      condition: true
+    });
+
+    // Role-specific navigation
+    if (userRole === UserRole.HR_ADMIN) {
+      items.push(
+        {
+          href: '/',
+          label: 'Dashboard',
+          condition: true
+        },
+        {
+          href: '/employees',
+          label: 'Employees',
+          condition: true
+        },
+        {
+          href: '/employees/create',
+          label: 'Create Employee',
+          condition: true
+        },
+        {
+          href: '/departments',
+          label: 'Departments',
+          condition: true
+        },
+        {
+          href: '/search',
+          label: 'Search',
+          condition: true
+        }
+      );
+    } else if (userRole === UserRole.SUPERVISOR) {
+      items.push(
+        {
+          href: '/',
+          label: 'Dashboard',
+          condition: true
+        },
+        {
+          href: '/employees',
+          label: 'My Team',
+          condition: true
+        },
+        {
+          href: '/departments',
+          label: 'Departments',
+          condition: true
+        }
+      );
+    }
+    // For EMPLOYEE role, only profile is available (already added above)
+
+    return items.filter(item => item.condition);
+  };
+
+  const navigationItems = getNavigationItems();
+
   return (
     <nav className="bg-white shadow border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-gray-900 mr-8">
+            <Link 
+              href={userRole === UserRole.EMPLOYEE ? '/profile' : '/'} 
+              className="text-xl font-bold text-gray-900 mr-8"
+            >
               HRM System
             </Link>
             
             <div className="hidden md:flex space-x-6">
-              <Link 
-                href="/" 
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Dashboard
-              </Link>
-              
-              <Link 
-                href="/search" 
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Search
-              </Link>
-              
-              <Link 
-                href="/departments" 
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Departments
-              </Link>
-              
-              {userRole === UserRole.HR_ADMIN && (
+              {navigationItems.map((item) => (
                 <Link 
-                  href="/employees/create" 
+                  key={item.href}
+                  href={item.href} 
                   className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Create Employee
+                  {item.label}
                 </Link>
-              )}
+              ))}
             </div>
           </div>
 

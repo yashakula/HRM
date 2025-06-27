@@ -8,7 +8,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { apiClient } from '@/lib/api';
 import { EmployeeCreateRequest } from '@/lib/types';
-import { useIsHRAdmin } from '@/store/authStore';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { SensitiveField, PermissionBasedSection } from '@/components/auth/ConditionalRender';
 
 // Form validation schema
 const employeeSchema = z.object({
@@ -30,8 +31,18 @@ const employeeSchema = z.object({
 type EmployeeFormData = z.infer<typeof employeeSchema>;
 
 export default function CreateEmployeePage() {
+  return (
+    <ProtectedRoute 
+      pageIdentifier="employees/create" 
+      requiredPermissions={['view', 'create']}
+    >
+      <CreateEmployeeForm />
+    </ProtectedRoute>
+  );
+}
+
+function CreateEmployeeForm() {
   const router = useRouter();
-  const isHRAdmin = useIsHRAdmin();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -57,14 +68,6 @@ export default function CreateEmployeePage() {
     },
   });
 
-  // Redirect if not HR Admin
-  if (!isHRAdmin) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-md p-4">
-        <p className="text-red-600">Access denied. Only HR Administrators can create employees.</p>
-      </div>
-    );
-  }
 
   const onSubmit = (data: EmployeeFormData) => {
     setIsSubmitting(true);
@@ -163,42 +166,56 @@ export default function CreateEmployeePage() {
             </div>
 
             {/* Sensitive Information Section */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Sensitive Information</h3>
+            <PermissionBasedSection
+              sectionType="hr_admin"
+              title="Sensitive Information"
+              description="Financial and identity information (HR Admin only)"
+              fallback={
+                <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+                  <p className="text-sm text-gray-600">
+                    Sensitive information fields are only visible to HR Administrators.
+                  </p>
+                </div>
+              }
+            >
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="ssn" className="block text-sm font-medium text-gray-700">
-                    Social Security Number
-                  </label>
-                  <input
-                    type="text"
-                    id="ssn"
-                    {...register('ssn')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="XXX-XX-XXXX"
-                  />
-                  {errors.ssn && (
-                    <p className="mt-1 text-sm text-red-600">{errors.ssn.message}</p>
-                  )}
-                </div>
+                <SensitiveField fieldType="ssn">
+                  <div>
+                    <label htmlFor="ssn" className="block text-sm font-medium text-gray-700">
+                      Social Security Number
+                    </label>
+                    <input
+                      type="text"
+                      id="ssn"
+                      {...register('ssn')}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="XXX-XX-XXXX"
+                    />
+                    {errors.ssn && (
+                      <p className="mt-1 text-sm text-red-600">{errors.ssn.message}</p>
+                    )}
+                  </div>
+                </SensitiveField>
 
-                <div>
-                  <label htmlFor="bank_account" className="block text-sm font-medium text-gray-700">
-                    Bank Account
-                  </label>
-                  <input
-                    type="text"
-                    id="bank_account"
-                    {...register('bank_account')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Account number"
-                  />
-                  {errors.bank_account && (
-                    <p className="mt-1 text-sm text-red-600">{errors.bank_account.message}</p>
-                  )}
-                </div>
+                <SensitiveField fieldType="bank_account">
+                  <div>
+                    <label htmlFor="bank_account" className="block text-sm font-medium text-gray-700">
+                      Bank Account
+                    </label>
+                    <input
+                      type="text"
+                      id="bank_account"
+                      {...register('bank_account')}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Account number"
+                    />
+                    {errors.bank_account && (
+                      <p className="mt-1 text-sm text-red-600">{errors.bank_account.message}</p>
+                    )}
+                  </div>
+                </SensitiveField>
               </div>
-            </div>
+            </PermissionBasedSection>
 
             {/* Employment Information Section */}
             <div>

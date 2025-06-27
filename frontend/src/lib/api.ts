@@ -8,6 +8,8 @@ import {
   EmployeeCreateRequest,
   EmployeeUpdateRequest,
   EmployeeSearchParams,
+  PageAccessRequest,
+  PageAccessResponse,
   ApiError 
 } from './types';
 
@@ -78,6 +80,13 @@ class ApiClient {
 
   async getCurrentUser(): Promise<User> {
     return this.request<User>('/api/v1/auth/me');
+  }
+
+  async validatePageAccess(request: PageAccessRequest): Promise<PageAccessResponse> {
+    return this.request<PageAccessResponse>('/api/v1/auth/validate-page-access', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
   }
 
   // Generic HTTP methods
