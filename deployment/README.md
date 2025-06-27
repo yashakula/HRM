@@ -64,8 +64,12 @@ Project structure:
 # Start tunnel environment
 ./deployment/run_containers.sh start --env tunnel
 
+# Check tunnel URL and status
+./deployment/run_containers.sh tunnel-url --env tunnel
+
 # Accessible via Cloudflare tunnel:
-# - Frontend: https://yashakula.com (or your domain)
+# - Frontend: https://hrm.yashakula.com (or your domain)
+# - Backend API: https://hrm.yashakula.com/api/*
 # - Backend/Database: Internal access only
 # - No local ports exposed (secure tunnel access only)
 ```
@@ -92,6 +96,8 @@ Project structure:
 
 ## Available Commands
 
+The `run_containers.sh` script supports all three deployment profiles with proper environment variable loading and docker-compose file selection.
+
 ```bash
 # Environment Management
 ./deployment/run_containers.sh start [--env dev|prod|tunnel]     # Start containers
@@ -103,12 +109,36 @@ Project structure:
 ./deployment/run_containers.sh status [--env dev|prod|tunnel]    # Show container status
 ./deployment/run_containers.sh logs [--env dev|prod|tunnel]      # Show container logs
 
+# Tunnel-Specific Commands
+./deployment/run_containers.sh tunnel-url --env tunnel          # Show tunnel URL and status
+
 # Database Management
 ./deployment/run_containers.sh seed [--env dev|prod|tunnel]      # Seed database
 ./deployment/run_containers.sh reset [--env dev|prod|tunnel]     # Reset and reseed database
 
 # Cleanup
 ./deployment/run_containers.sh clean [--env dev|prod|tunnel]     # Remove containers/volumes
+
+# Help
+./deployment/run_containers.sh help                             # Show detailed help
+```
+
+### Command Examples
+
+```bash
+# Development (default)
+./deployment/run_containers.sh                                  # Start in dev mode
+./deployment/run_containers.sh start                           # Same as above
+./deployment/run_containers.sh status --env dev                # Check dev status
+
+# Production
+./deployment/run_containers.sh start --env prod                # Start prod mode
+./deployment/run_containers.sh rebuild --env prod              # Rebuild prod containers
+
+# Tunnel  
+./deployment/run_containers.sh start --env tunnel              # Start tunnel mode
+./deployment/run_containers.sh tunnel-url --env tunnel         # Show tunnel URL
+./deployment/run_containers.sh logs --env tunnel               # View tunnel logs
 ```
 
 ## Environment Variables
@@ -128,12 +158,36 @@ Project structure:
 - `NODE_ENV=production` - Production mode
 
 ### Tunnel (.env.tunnel)
-- `NEXT_PUBLIC_API_URL=https://yashakula.com` - Tunnel domain URL
+- `NEXT_PUBLIC_API_URL=https://hrm.yashakula.com` - Tunnel domain URL
 - `CLOUDFLARE_TUNNEL_TOKEN=your_token` - Cloudflare tunnel token
-- `TUNNEL_DOMAIN=yashakula.com` - Your tunnel domain
+- `TUNNEL_DOMAIN=hrm.yashakula.com` - Your tunnel domain
 - `COOKIE_SECURE=true` - Secure cookies for HTTPS
 - `COOKIE_DOMAIN=.yashakula.com` - Cookie domain scope
-- `BACKEND_CORS_ORIGINS=https://yashakula.com` - CORS configuration
+- `BACKEND_CORS_ORIGINS=https://hrm.yashakula.com` - CORS configuration
+
+## Script Features
+
+The `run_containers.sh` script has been enhanced to properly support all three deployment profiles:
+
+### Smart Environment Loading
+- **Automatic .env file selection**: Loads the correct environment file (`.env.development`, `.env.production`, or `.env.tunnel`) based on the `--env` parameter
+- **Proper docker-compose file selection**: Uses the base `docker-compose.yml` plus the appropriate overlay file
+- **Environment validation**: Validates that the specified environment is supported
+
+### Profile-Specific Status Checks
+- **Development**: Shows direct access URLs for all services (frontend, backend, database)
+- **Production**: Shows frontend URL and indicates backend/database are internal-only
+- **Tunnel**: Shows tunnel connection status and domain URL, indicates all services are internal-only
+
+### Tunnel-Specific Features
+- **tunnel-url command**: Shows the current tunnel URL and connection status
+- **Enhanced tunnel logs**: Displays recent tunnel connection logs
+- **Tunnel health monitoring**: Checks if Cloudflare tunnel container is running and connected
+
+### Improved Error Handling
+- **Docker connectivity checks**: Verifies Docker is running before attempting operations
+- **Container status validation**: Checks if containers started successfully
+- **Environment file validation**: Warns if environment files are missing
 
 ## Security Considerations
 
@@ -200,9 +254,9 @@ For Cloudflare tunnel deployment:
    CLOUDFLARE_TUNNEL_TOKEN=your_actual_tunnel_token
    
    # Set your tunnel domain
-   TUNNEL_DOMAIN=yourdomain.com
-   NEXT_PUBLIC_API_URL=https://yourdomain.com
-   BACKEND_CORS_ORIGINS=https://yourdomain.com
+   TUNNEL_DOMAIN=hrm.yourdomain.com
+   NEXT_PUBLIC_API_URL=https://hrm.yourdomain.com
+   BACKEND_CORS_ORIGINS=https://hrm.yourdomain.com
    COOKIE_DOMAIN=.yourdomain.com
    ```
 
@@ -248,10 +302,12 @@ docker-compose -f docker-compose.yml -f docker-compose.tunnel.yml exec database 
 
 ### Tunnel not connecting
 If Cloudflare tunnel fails to connect:
-1. Verify tunnel token is correct in `.env.tunnel`
-2. Check tunnel status in Cloudflare dashboard
-3. Ensure tunnel domain is properly configured
-4. Check container logs: `./deployment/run_containers.sh logs --env tunnel`
+1. Check tunnel status: `./deployment/run_containers.sh tunnel-url --env tunnel`
+2. Verify tunnel token is correct in `.env.tunnel`
+3. Check tunnel status in Cloudflare dashboard
+4. Ensure tunnel domain is properly configured
+5. Check container logs: `./deployment/run_containers.sh logs --env tunnel`
+6. View tunnel-specific logs: `docker logs hrm-tunnel`
 
 ## Login Credentials
 

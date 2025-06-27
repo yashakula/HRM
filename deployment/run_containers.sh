@@ -95,21 +95,25 @@ load_env() {
 
 # Function to get docker-compose command with environment-specific files
 get_docker_compose_cmd() {
-    local compose_files="-f docker-compose.yml"
+    local env_file=""
+    local compose_files=""
     
     case "$ENVIRONMENT" in
         "dev")
-            compose_files="$compose_files -f docker-compose.dev.yml"
+            env_file="--env-file .env.development"
+            compose_files="-f docker-compose.yml -f docker-compose.dev.yml"
             ;;
         "prod")
-            compose_files="$compose_files -f docker-compose.prod.yml"
+            env_file="--env-file .env.production"
+            compose_files="-f docker-compose.yml -f docker-compose.prod.yml"
             ;;
         "tunnel")
-            compose_files="$compose_files -f docker-compose.tunnel.yml"
+            env_file="--env-file .env.tunnel"
+            compose_files="-f docker-compose.yml -f docker-compose.tunnel.yml"
             ;;
     esac
     
-    echo "docker-compose $compose_files"
+    echo "docker-compose $env_file $compose_files"
 }
 
 # Function to check if docker is running
@@ -143,6 +147,7 @@ usage() {
     echo "  status      Show status of all containers"
     echo "  seed        Run database seeding after containers are up"
     echo "  reset       Reset database and reseed with fresh data"
+    echo "  tunnel-url  Show tunnel URL and connection status (tunnel mode only)"
     echo "  clean       Stop containers and remove images/volumes"
     echo "  help        Show this help message"
     echo ""
@@ -275,6 +280,14 @@ show_logs() {
     local compose_cmd=$(get_docker_compose_cmd)
     
     print_status "Showing HRM container logs ($ENVIRONMENT environment)..."
+    
+    # For tunnel mode, show tunnel logs prominently
+    if [ "$ENVIRONMENT" = "tunnel" ]; then
+        print_status "Press Ctrl+C to exit log viewing"
+        print_status "Use 'docker logs hrm-tunnel' to see only tunnel logs"
+        echo ""
+    fi
+    
     $compose_cmd logs -f
 }
 
@@ -303,16 +316,39 @@ show_status() {
         else
             print_warning "Backend API: Not responding (may still be starting)"
         fi
-    else
+        
+        # Check frontend (exposed in dev mode)
+        if curl -s http://localhost:3000 > /dev/null 2>&1; then
+            print_success "Frontend: Ready (localhost:3000)"
+        else
+            print_warning "Frontend: Not responding (may still be starting)"
+        fi
+    elif [ "$ENVIRONMENT" = "prod" ]; then
         print_status "Database: Internal access only (production mode)"
         print_status "Backend API: Internal access only (production mode)"
-    fi
-    
-    # Check frontend (always exposed)
-    if curl -s http://localhost:3000 > /dev/null 2>&1; then
-        print_success "Frontend: Ready (localhost:3000)"
-    else
-        print_warning "Frontend: Not responding (may still be starting)"
+        
+        # Check frontend (exposed in prod mode)
+        if curl -s http://localhost:3000 > /dev/null 2>&1; then
+            print_success "Frontend: Ready (localhost:3000)"
+        else
+            print_warning "Frontend: Not responding (may still be starting)"
+        fi
+    else # tunnel mode
+        print_status "Database: Internal access only (tunnel mode)"
+        print_status "Backend API: Internal access only (tunnel mode)"
+        print_status "Frontend: Internal access only (tunnel mode)"
+        
+        # Check tunnel status
+        if $compose_cmd ps | grep -q "hrm-tunnel.*Up"; then
+            print_success "Cloudflare Tunnel: Connected"
+            if [ -n "$TUNNEL_DOMAIN" ]; then
+                print_status "Tunnel URL: https://$TUNNEL_DOMAIN"
+            else
+                print_status "Check tunnel logs for connection URL: $0 logs --env tunnel"
+            fi
+        else
+            print_error "Cloudflare Tunnel: Not running"
+        fi
     fi
 }
 
@@ -370,6 +406,46 @@ reset_database() {
     fi
 }
 
+# Function to show tunnel URL and status
+show_tunnel_url() {
+    if [ "$ENVIRONMENT" != "tunnel" ]; then
+        print_error "tunnel-url command is only available in tunnel mode"
+        print_status "Use: $0 tunnel-url --env tunnel"
+        exit 1
+    fi
+    
+    local compose_cmd=$(get_docker_compose_cmd)
+    
+    print_status "Cloudflare Tunnel Status:"
+    
+    # Check if tunnel container is running
+    if $compose_cmd ps | grep -q "hrm-tunnel.*Up"; then
+        print_success "Tunnel container: Running"
+        
+        # Show tunnel URL from environment
+        if [ -n "$TUNNEL_DOMAIN" ]; then
+            echo ""
+            print_status "🌐 Your HRM application is available at:"
+            echo -e "${GREEN}   https://$TUNNEL_DOMAIN${NC}"
+            echo ""
+            print_status "API endpoints:"
+            print_status "   https://$TUNNEL_DOMAIN/api/docs"
+            print_status "   https://$TUNNEL_DOMAIN/api/health"
+        else
+            print_warning "TUNNEL_DOMAIN not set in .env.tunnel"
+        fi
+        
+        # Show recent tunnel logs
+        echo ""
+        print_status "Recent tunnel logs:"
+        docker logs hrm-tunnel --tail 10
+        
+    else
+        print_error "Tunnel container is not running"
+        print_status "Start tunnel with: $0 start --env tunnel"
+    fi
+}
+
 # Function to clean up everything
 clean_containers() {
     local compose_cmd=$(get_docker_compose_cmd)
@@ -402,7 +478,7 @@ main() {
     # Get the main command (first argument that's not an option)
     local command=""
     for arg in "${original_args[@]}"; do
-        if [[ ! "$arg" =~ ^-- ]] && [[ "$arg" != "dev" ]] && [[ "$arg" != "prod" ]]; then
+        if [[ ! "$arg" =~ ^-- ]] && [[ "$arg" != "dev" ]] && [[ "$arg" != "prod" ]] && [[ "$arg" != "tunnel" ]]; then
             command="$arg"
             break
         fi
@@ -437,6 +513,9 @@ main() {
             ;;
         reset)
             reset_database
+            ;;
+        tunnel-url)
+            show_tunnel_url
             ;;
         clean)
             clean_containers
