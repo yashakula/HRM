@@ -10,6 +10,10 @@ import {
   EmployeeSearchParams,
   PageAccessRequest,
   PageAccessResponse,
+  LeaveRequest,
+  LeaveRequestCreateRequest,
+  LeaveRequestUpdateRequest,
+  Assignment,
   ApiError 
 } from './types';
 
@@ -150,6 +154,49 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify(employee),
     });
+  }
+
+  async getSupervisees(): Promise<Employee[]> {
+    return this.request<Employee[]>('/api/v1/employees/supervisees');
+  }
+
+  // Leave Request endpoints
+  async createLeaveRequest(leaveRequest: LeaveRequestCreateRequest): Promise<LeaveRequest> {
+    return this.request<LeaveRequest>('/api/v1/leave-requests/', {
+      method: 'POST',
+      body: JSON.stringify(leaveRequest),
+    });
+  }
+
+  async getLeaveRequests(status?: string): Promise<LeaveRequest[]> {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    
+    const endpoint = `/api/v1/leave-requests/${params.toString() ? `?${params.toString()}` : ''}`;
+    return this.request<LeaveRequest[]>(endpoint);
+  }
+
+  async getMyLeaveRequests(): Promise<LeaveRequest[]> {
+    return this.request<LeaveRequest[]>('/api/v1/leave-requests/my-requests');
+  }
+
+  async getPendingApprovals(): Promise<LeaveRequest[]> {
+    return this.request<LeaveRequest[]>('/api/v1/leave-requests/pending-approvals');
+  }
+
+  async getLeaveRequest(id: number): Promise<LeaveRequest> {
+    return this.request<LeaveRequest>(`/api/v1/leave-requests/${id}`);
+  }
+
+  async updateLeaveRequest(id: number, update: LeaveRequestUpdateRequest): Promise<LeaveRequest> {
+    return this.request<LeaveRequest>(`/api/v1/leave-requests/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(update),
+    });
+  }
+
+  async getEmployeeActiveAssignments(employeeId: number): Promise<Assignment[]> {
+    return this.request<Assignment[]>(`/api/v1/leave-requests/assignments/${employeeId}/active`);
   }
 }
 

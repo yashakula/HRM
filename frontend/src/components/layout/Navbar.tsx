@@ -28,6 +28,13 @@ export default function Navbar() {
       condition: true
     });
 
+    // Leave request is available to all authenticated users
+    items.push({
+      href: '/leave-request',
+      label: 'Leave Request',
+      condition: true
+    });
+
     // Role-specific navigation
     if (userRole === UserRole.HR_ADMIN) {
       items.push(

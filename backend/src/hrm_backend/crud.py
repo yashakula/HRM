@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
-from datetime import date
+from datetime import date, datetime
 from . import models, schemas
 
 def create_employee(db: Session, employee: schemas.EmployeeCreate):
@@ -519,3 +519,184 @@ def update_assignment_supervisors(db: Session, assignment_id: int, supervisor_id
     
     db.commit()
     return get_assignment(db, assignment_id)
+
+def get_supervisees_for_supervisor(db: Session, supervisor_employee_id: int):
+    """Get all employees that the specified supervisor supervises
+    
+    Args:
+        supervisor_employee_id: The employee_id of the supervisor
+        
+    Returns:
+        List of Employee objects that this supervisor supervises
+    """
+    # Query to get distinct employees supervised by this supervisor
+    # through active assignment supervisor relationships
+    return db.query(models.Employee)\
+        .join(models.Assignment, models.Employee.employee_id == models.Assignment.employee_id)\
+        .join(models.AssignmentSupervisor, models.Assignment.assignment_id == models.AssignmentSupervisor.assignment_id)\
+        .options(
+            joinedload(models.Employee.person)\
+            .joinedload(models.People.personal_information),
+            joinedload(models.Employee.assignments)\
+            .joinedload(models.Assignment.assignment_type)
+        )\
+        .filter(
+            models.AssignmentSupervisor.supervisor_id == supervisor_employee_id,
+            models.AssignmentSupervisor.effective_start_date <= date.today(),
+            (models.AssignmentSupervisor.effective_end_date.is_(None) | 
+             (models.AssignmentSupervisor.effective_end_date > date.today()))
+        )\
+        .distinct()\
+        .all()
+
+def get_employees_for_supervisor_assignment(db: Session, supervisor_employee_id: int, include_self: bool = True):
+    """Get employees that a supervisor can assign as supervisors to assignments
+    
+    This includes:
+    - Employees they currently supervise 
+    - Themselves (if include_self=True)
+    
+    Args:
+        supervisor_employee_id: The employee_id of the supervisor
+        include_self: Whether to include the supervisor themselves in the list
+        
+    Returns:
+        List of Employee objects that can be assigned as supervisors
+    """
+    # Get employees supervised by this supervisor
+    supervisees = get_supervisees_for_supervisor(db, supervisor_employee_id)
+    
+    # If requested, also include the supervisor themselves
+    available_supervisors = list(supervisees)
+    
+    if include_self:
+        supervisor = get_employee(db, supervisor_employee_id)
+        if supervisor and supervisor not in available_supervisors:
+            available_supervisors.append(supervisor)
+    
+    return available_supervisors
+
+# Leave Request CRUD functions
+def create_leave_request(db: Session, leave_request: schemas.LeaveRequestCreate):
+    """Create a new leave request"""
+    db_leave_request = models.LeaveRequest(
+        assignment_id=leave_request.assignment_id,
+        start_date=leave_request.start_date,
+        end_date=leave_request.end_date,
+        reason=leave_request.reason,
+        status=models.LeaveStatus.PENDING
+    )
+    db.add(db_leave_request)
+    db.commit()
+    db.refresh(db_leave_request)
+    
+    return get_leave_request(db, db_leave_request.leave_id)
+
+def get_leave_request(db: Session, leave_id: int):
+    """Get leave request by ID with all relationships"""
+    return db.query(models.LeaveRequest)\
+        .options(
+            joinedload(models.LeaveRequest.assignment)\
+            .joinedload(models.Assignment.assignment_type)\
+            .joinedload(models.AssignmentType.department),
+            joinedload(models.LeaveRequest.assignment)\
+            .joinedload(models.Assignment.employee)\
+            .joinedload(models.Employee.person),
+            joinedload(models.LeaveRequest.decision_maker)\
+            .joinedload(models.Employee.person)
+        )\
+        .filter(models.LeaveRequest.leave_id == leave_id)\
+        .first()
+
+def get_leave_requests(db: Session, skip: int = 0, limit: int = 100):
+    """Get all leave requests"""
+    return db.query(models.LeaveRequest)\
+        .options(
+            joinedload(models.LeaveRequest.assignment)\
+            .joinedload(models.Assignment.assignment_type)\
+            .joinedload(models.AssignmentType.department),
+            joinedload(models.LeaveRequest.assignment)\
+            .joinedload(models.Assignment.employee)\
+            .joinedload(models.Employee.person),
+            joinedload(models.LeaveRequest.decision_maker)\
+            .joinedload(models.Employee.person)
+        )\
+        .order_by(models.LeaveRequest.submitted_at.desc())\
+        .offset(skip)\
+        .limit(limit)\
+        .all()
+
+def get_leave_requests_by_employee(db: Session, employee_id: int):
+    """Get all leave requests for a specific employee"""
+    return db.query(models.LeaveRequest)\
+        .join(models.Assignment, models.LeaveRequest.assignment_id == models.Assignment.assignment_id)\
+        .options(
+            joinedload(models.LeaveRequest.assignment)\
+            .joinedload(models.Assignment.assignment_type)\
+            .joinedload(models.AssignmentType.department),
+            joinedload(models.LeaveRequest.decision_maker)\
+            .joinedload(models.Employee.person)
+        )\
+        .filter(models.Assignment.employee_id == employee_id)\
+        .order_by(models.LeaveRequest.submitted_at.desc())\
+        .all()
+
+def get_leave_requests_for_supervisor(db: Session, supervisor_employee_id: int, status: models.LeaveStatus = None):
+    """Get leave requests that require approval from a specific supervisor"""
+    query = db.query(models.LeaveRequest)\
+        .join(models.Assignment, models.LeaveRequest.assignment_id == models.Assignment.assignment_id)\
+        .join(models.AssignmentSupervisor, models.Assignment.assignment_id == models.AssignmentSupervisor.assignment_id)\
+        .options(
+            joinedload(models.LeaveRequest.assignment)\
+            .joinedload(models.Assignment.assignment_type)\
+            .joinedload(models.AssignmentType.department),
+            joinedload(models.LeaveRequest.assignment)\
+            .joinedload(models.Assignment.employee)\
+            .joinedload(models.Employee.person),
+            joinedload(models.LeaveRequest.decision_maker)\
+            .joinedload(models.Employee.person)
+        )\
+        .filter(
+            models.AssignmentSupervisor.supervisor_id == supervisor_employee_id,
+            models.AssignmentSupervisor.effective_start_date <= date.today(),
+            (models.AssignmentSupervisor.effective_end_date.is_(None) | 
+             (models.AssignmentSupervisor.effective_end_date > date.today()))
+        )
+    
+    if status:
+        query = query.filter(models.LeaveRequest.status == status)
+    
+    return query.order_by(models.LeaveRequest.submitted_at.desc()).all()
+
+def update_leave_request(db: Session, leave_id: int, leave_update: schemas.LeaveRequestUpdate, updated_by_employee_id: int):
+    """Update leave request status and decision information"""
+    db_leave_request = get_leave_request(db, leave_id)
+    if not db_leave_request:
+        return None
+    
+    db_leave_request.status = leave_update.status
+    if leave_update.reason:
+        db_leave_request.reason = leave_update.reason
+    
+    # Set decision information
+    db_leave_request.decided_by = updated_by_employee_id
+    db_leave_request.decision_at = datetime.utcnow()
+    
+    db.commit()
+    return get_leave_request(db, leave_id)
+
+def get_employee_active_assignments(db: Session, employee_id: int):
+    """Get all active assignments for an employee"""
+    return db.query(models.Assignment)\
+        .options(
+            joinedload(models.Assignment.assignment_type)\
+            .joinedload(models.AssignmentType.department)
+        )\
+        .filter(
+            models.Assignment.employee_id == employee_id,
+            models.Assignment.effective_start_date <= date.today(),
+            (models.Assignment.effective_end_date.is_(None) | 
+             (models.Assignment.effective_end_date > date.today()))
+        )\
+        .order_by(models.Assignment.is_primary.desc())\
+        .all()

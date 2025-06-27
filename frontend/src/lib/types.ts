@@ -6,6 +6,12 @@ export enum UserRole {
   EMPLOYEE = "EMPLOYEE"
 }
 
+export enum LeaveStatus {
+  PENDING = "Pending",
+  APPROVED = "Approved",
+  REJECTED = "Rejected"
+}
+
 export interface User {
   user_id: number;
   username: string;
@@ -178,4 +184,31 @@ export interface PageAccessResponse {
   resource_id?: number;
   permissions: PageAccessPermissions;
   access_granted: boolean;
+}
+
+// Leave Request types
+export interface LeaveRequest {
+  leave_id: number;
+  assignment_id: number;
+  start_date: string;
+  end_date: string;
+  reason?: string;
+  status: LeaveStatus;
+  submitted_at: string;
+  decision_at?: string;
+  decided_by?: number;
+  assignment: Assignment;
+  decision_maker?: Employee;
+}
+
+export interface LeaveRequestCreateRequest {
+  assignment_id: number;
+  start_date: string;
+  end_date: string;
+  reason?: string;
+}
+
+export interface LeaveRequestUpdateRequest {
+  status: LeaveStatus;
+  reason?: string;
 }
