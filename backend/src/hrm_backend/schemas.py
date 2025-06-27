@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import date, datetime
 from typing import Optional, Union, List
-from .models import EmployeeStatus, UserRole
+from .models import EmployeeStatus, UserRole, LeaveStatus
 
 class PersonCreate(BaseModel):
     full_name: str
@@ -318,6 +318,33 @@ class SupervisorAssignmentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     supervisor: EmployeeResponse
+
+    class Config:
+        from_attributes = True
+
+# Leave Request schemas
+class LeaveRequestCreate(BaseModel):
+    assignment_id: int
+    start_date: date
+    end_date: date
+    reason: Optional[str] = None
+
+class LeaveRequestUpdate(BaseModel):
+    status: LeaveStatus
+    reason: Optional[str] = None  # Allow supervisor to add notes
+
+class LeaveRequestResponse(BaseModel):
+    leave_id: int
+    assignment_id: int
+    start_date: date
+    end_date: date
+    reason: Optional[str]
+    status: LeaveStatus
+    submitted_at: datetime
+    decision_at: Optional[datetime]
+    decided_by: Optional[int]
+    assignment: "AssignmentResponse"
+    decision_maker: Optional["EmployeeResponse"] = None
 
     class Config:
         from_attributes = True
