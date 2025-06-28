@@ -3,17 +3,19 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from .. import schemas, crud
-from ..auth import get_current_active_user, require_hr_admin
+from ..auth import get_current_active_user
+from ..permission_decorators import require_permission
 from ..database import get_db
 from ..models import User
 
 router = APIRouter(prefix="/departments", tags=["departments"])
 
 @router.post("/", response_model=schemas.DepartmentResponse)
+@require_permission("department.create")
 def create_department(
     department: schemas.DepartmentCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_hr_admin())
+    current_user: User = Depends(get_current_active_user)
 ):
     """Create a new department (HR Admin only)"""
     return crud.create_department(db=db, department=department)
@@ -41,11 +43,12 @@ def get_department(
     return department
 
 @router.put("/{department_id}", response_model=schemas.DepartmentResponse)
+@require_permission("department.update")
 def update_department(
     department_id: int,
     department: schemas.DepartmentUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_hr_admin())
+    current_user: User = Depends(get_current_active_user)
 ):
     """Update department and manage assignment types (HR Admin only)"""
     updated_department = crud.update_department(db=db, department_id=department_id, department=department)
@@ -54,10 +57,11 @@ def update_department(
     return updated_department
 
 @router.delete("/{department_id}")
+@require_permission("department.delete")
 def delete_department(
     department_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_hr_admin())
+    current_user: User = Depends(get_current_active_user)
 ):
     """Delete department (HR Admin only)"""
     department = crud.delete_department(db=db, department_id=department_id)

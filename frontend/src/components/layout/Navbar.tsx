@@ -1,7 +1,12 @@
 'use client';
 
-import { useAuthStore, useUserRole } from '@/store/authStore';
-import { UserRole } from '@/lib/types';
+import { 
+  useAuthStore, 
+  useUserRole,
+  useHasPermission,
+  useHasAnyPermission
+} from '@/store/authStore';
+// UserRole import removed - using permission-based navigation
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -10,6 +15,13 @@ export default function Navbar() {
   const userRole = useUserRole();
   const router = useRouter();
 
+  // Permission checking hooks
+  const canCreateEmployee = useHasPermission('employee.create');
+  const canSearchEmployees = useHasAnyPermission(['employee.read.all', 'employee.read.supervised']);
+  const canViewDepartments = useHasPermission('department.read');
+  const canManageDepartments = useHasAnyPermission(['department.create', 'department.update', 'department.delete']);
+  const canManageUsers = useHasPermission('user.manage');
+
   const handleLogout = async () => {
     await logout();
     router.push('/login');
@@ -17,7 +29,7 @@ export default function Navbar() {
 
   if (!user) return null;
 
-  // Define role-based navigation items
+  // Define permission-based navigation items
   const getNavigationItems = () => {
     const items = [];
 
@@ -35,50 +47,50 @@ export default function Navbar() {
       condition: true
     });
 
-    // Role-specific navigation
-    if (userRole === UserRole.HR_ADMIN) {
-      items.push(
-        {
-          href: '/',
-          label: 'Dashboard',
-          condition: true
-        },
-        {
-          href: '/search',
-          label: 'Search Employees',
-          condition: true
-        },
-        {
-          href: '/employees/create',
-          label: 'Create Employee',
-          condition: true
-        },
-        {
-          href: '/departments',
-          label: 'Departments',
-          condition: true
-        }
-      );
-    } else if (userRole === UserRole.SUPERVISOR) {
-      items.push(
-        {
-          href: '/',
-          label: 'Dashboard',
-          condition: true
-        },
-        {
-          href: '/search',
-          label: 'Search Employees',
-          condition: true
-        },
-        {
-          href: '/departments',
-          label: 'Departments',
-          condition: true
-        }
-      );
+    // Dashboard - available to users who can manage others or see broader data
+    if (canSearchEmployees || canManageDepartments) {
+      items.push({
+        href: '/',
+        label: 'Dashboard',
+        condition: true
+      });
     }
-    // For EMPLOYEE role, only profile is available (already added above)
+
+    // Search employees - based on read permissions
+    if (canSearchEmployees) {
+      items.push({
+        href: '/search',
+        label: 'Search Employees',
+        condition: true
+      });
+    }
+
+    // Create employee - based on create permission
+    if (canCreateEmployee) {
+      items.push({
+        href: '/employees/create',
+        label: 'Create Employee',
+        condition: true
+      });
+    }
+
+    // Departments - based on department permissions
+    if (canViewDepartments) {
+      items.push({
+        href: '/departments',
+        label: 'Departments',
+        condition: true
+      });
+    }
+
+    // Admin panel - based on user management permission
+    if (canManageUsers) {
+      items.push({
+        href: '/admin',
+        label: 'Admin Panel',
+        condition: true
+      });
+    }
 
     return items.filter(item => item.condition);
   };
@@ -91,7 +103,7 @@ export default function Navbar() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link 
-              href={userRole === UserRole.EMPLOYEE ? '/profile' : '/'} 
+              href={canSearchEmployees || canManageDepartments ? '/' : '/profile'} 
               className="text-xl font-bold text-gray-900 mr-8"
             >
               HRM System

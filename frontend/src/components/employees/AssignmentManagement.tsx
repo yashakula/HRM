@@ -10,7 +10,9 @@ import { departmentApi } from '@/lib/api/departments';
 import { assignmentTypeApi } from '@/lib/api/assignmentTypes';
 import { apiClient } from '@/lib/api';
 import { AssignmentCreateRequest, Employee } from '@/lib/types';
-import { useIsHRAdmin } from '@/store/authStore';
+import { 
+  useHasPermission
+} from '@/store/authStore';
 
 // Form validation schema for new assignments
 const assignmentCreateSchema = z.object({
@@ -30,7 +32,10 @@ interface AssignmentManagementProps {
 
 export default function AssignmentManagement({ employee }: AssignmentManagementProps) {
   const queryClient = useQueryClient();
-  const isHRAdmin = useIsHRAdmin();
+  // Permission checks
+  const canCreateAssignment = useHasPermission('assignment.create');
+  const canUpdateAssignments = useHasPermission('assignment.update.all');
+  const canDeleteAssignments = useHasPermission('assignment.delete');
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -137,7 +142,6 @@ export default function AssignmentManagement({ employee }: AssignmentManagementP
   };
 
   const handleDeleteAssignment = (assignmentId: number, assignmentName: string) => {
-    console.log('isHRAdmin:', isHRAdmin);
     if (confirm(`Are you sure you want to remove the ${assignmentName} assignment?`)) {
       console.log('Attempting to delete assignment:', assignmentId);
       setDeleteError(null); // Clear any previous errors
@@ -149,7 +153,8 @@ export default function AssignmentManagement({ employee }: AssignmentManagementP
     setPrimaryMutation.mutate(assignmentId);
   };
 
-  if (!isHRAdmin) {
+  // Show read-only view if user can't manage assignments
+  if (!canCreateAssignment && !canDeleteAssignments) {
     return (
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
@@ -199,12 +204,14 @@ export default function AssignmentManagement({ employee }: AssignmentManagementP
       <div className="px-4 py-5 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-gray-900">Assignments</h3>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Add Assignment
-          </button>
+          {canCreateAssignment && (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Add Assignment
+            </button>
+          )}
         </div>
 
         {/* Error Display */}
@@ -258,7 +265,7 @@ export default function AssignmentManagement({ employee }: AssignmentManagementP
                       </div>
                     </div>
                     <div className="flex items-center space-x-2 ml-4">
-                      {!assignment.is_primary && (
+                      {!assignment.is_primary && canUpdateAssignments && (
                         <button
                           onClick={() => handleSetPrimary(assignment.assignment_id)}
                           className="text-blue-600 hover:text-blue-800 text-sm font-medium"
@@ -267,13 +274,15 @@ export default function AssignmentManagement({ employee }: AssignmentManagementP
                           Set Primary
                         </button>
                       )}
-                      <button
-                        onClick={() => handleDeleteAssignment(assignment.assignment_id, assignment.assignment_type.description)}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium"
-                        disabled={deleteAssignmentMutation.isPending}
-                      >
-                        {deleteAssignmentMutation.isPending ? 'Removing...' : 'Remove'}
-                      </button>
+                      {canDeleteAssignments && (
+                        <button
+                          onClick={() => handleDeleteAssignment(assignment.assignment_id, assignment.assignment_type.description)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                          disabled={deleteAssignmentMutation.isPending}
+                        >
+                          {deleteAssignmentMutation.isPending ? 'Removing...' : 'Remove'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -3,17 +3,19 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from .. import schemas, crud
-from ..auth import get_current_active_user, require_hr_admin
+from ..auth import get_current_active_user
+from ..permission_decorators import require_permission
 from ..database import get_db
 from ..models import User
 
 router = APIRouter(prefix="/assignment-types", tags=["assignment-types"])
 
 @router.post("/", response_model=schemas.AssignmentTypeResponse)
+@require_permission("assignment_type.create")
 def create_assignment_type(
     assignment_type: schemas.AssignmentTypeCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_hr_admin())
+    current_user: User = Depends(get_current_active_user)
 ):
     """Create a new assignment type (HR Admin only)"""
     # Verify department exists
@@ -47,11 +49,12 @@ def get_assignment_type(
     return assignment_type
 
 @router.put("/{assignment_type_id}", response_model=schemas.AssignmentTypeResponse)
+@require_permission("assignment_type.update")
 def update_assignment_type(
     assignment_type_id: int,
     assignment_type: schemas.AssignmentTypeCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_hr_admin())
+    current_user: User = Depends(get_current_active_user)
 ):
     """Update assignment type (HR Admin only)"""
     # Verify department exists
@@ -67,10 +70,11 @@ def update_assignment_type(
     return updated_assignment_type
 
 @router.delete("/{assignment_type_id}")
+@require_permission("assignment_type.delete")
 def delete_assignment_type(
     assignment_type_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_hr_admin())
+    current_user: User = Depends(get_current_active_user)
 ):
     """Delete assignment type (HR Admin only)"""
     assignment_type = crud.delete_assignment_type(db=db, assignment_type_id=assignment_type_id)

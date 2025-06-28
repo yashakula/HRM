@@ -193,6 +193,7 @@ class UserResponse(BaseModel):
     username: str
     email: str
     role: UserRole
+    permissions: Optional[List[str]] = None  # User's permissions based on role
     is_active: bool
     created_at: datetime
     employee: Optional["EmployeeResponse"] = None  # Associated employee if exists
