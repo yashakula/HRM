@@ -5,11 +5,13 @@
 services:
   # Database - Expose port for direct access in development
   database:
+    container_name: hrm-database-dev
     ports:
       - "5432:5432"
 
   # Backend - Expose port for API testing and development
   backend:
+    container_name: hrm-backend-dev
     ports:
       - "8000:8000"
     volumes:
@@ -22,6 +24,7 @@ services:
 
   # Frontend - Always exposed, with development-specific settings
   frontend:
+    container_name: hrm-frontend-dev
     ports:
       - "3000:3000"
     environment:

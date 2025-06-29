@@ -284,7 +284,7 @@ show_logs() {
     # For tunnel mode, show tunnel logs prominently
     if [ "$ENVIRONMENT" = "tunnel" ]; then
         print_status "Press Ctrl+C to exit log viewing"
-        print_status "Use 'docker logs hrm-tunnel' to see only tunnel logs"
+        print_status "Use 'docker logs hrm-cloudflare-tunnel' to see only tunnel logs"
         echo ""
     fi
     
@@ -339,7 +339,7 @@ show_status() {
         print_status "Frontend: Internal access only (tunnel mode)"
         
         # Check tunnel status
-        if $compose_cmd ps | grep -q "hrm-tunnel.*Up"; then
+        if $compose_cmd ps | grep -q "hrm-cloudflare-tunnel.*Up"; then
             print_success "Cloudflare Tunnel: Connected"
             if [ -n "$TUNNEL_DOMAIN" ]; then
                 print_status "Tunnel URL: https://$TUNNEL_DOMAIN"
@@ -419,7 +419,7 @@ show_tunnel_url() {
     print_status "Cloudflare Tunnel Status:"
     
     # Check if tunnel container is running
-    if $compose_cmd ps | grep -q "hrm-tunnel.*Up"; then
+    if $compose_cmd ps | grep -q "hrm-cloudflare-tunnel.*Up"; then
         print_success "Tunnel container: Running"
         
         # Show tunnel URL from environment
@@ -438,7 +438,7 @@ show_tunnel_url() {
         # Show recent tunnel logs
         echo ""
         print_status "Recent tunnel logs:"
-        docker logs hrm-tunnel --tail 10
+        docker logs hrm-cloudflare-tunnel --tail 10
         
     else
         print_error "Tunnel container is not running"

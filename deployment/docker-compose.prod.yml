@@ -5,6 +5,7 @@
 services:
   # Database - No external ports exposed in production
   database:
+    container_name: hrm-database-prod
     # Enhanced security: no port exposure, only internal network access
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  # Use environment-specific password
@@ -18,6 +19,7 @@ services:
 
   # Backend - No external ports exposed in production
   backend:
+    container_name: hrm-backend-prod
     # No volume mounts in production (use built images)
     environment:
       CREATE_SEED_DATA: "false"
@@ -32,6 +34,7 @@ services:
 
   # Frontend - Only service exposed to external traffic
   frontend:
+    container_name: hrm-frontend-prod
     ports:
       - "3000:3000"
     environment:

@@ -6,7 +6,7 @@ services:
   # Cloudflare Tunnel Service
   cloudflare-tunnel:
     image: cloudflare/cloudflared:latest
-    container_name: hrm-tunnel
+    container_name: hrm-cloudflare-tunnel
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN} --url http://frontend:3000
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
@@ -21,6 +21,7 @@ services:
 
   # Database - No external port exposure (internal only)
   database:
+    container_name: hrm-database-tunnel
     # No ports exposed - internal network only
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-hrms}
@@ -29,6 +30,7 @@ services:
 
   # Backend - No external port exposure (accessible via tunnel)
   backend:
+    container_name: hrm-backend-tunnel
     # No ports exposed - accessible through tunnel only
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:mysecretpassword@database:5432/hrms}
@@ -50,6 +52,7 @@ services:
 
   # Frontend - No external port exposure (accessible via tunnel)
   frontend:
+    container_name: hrm-frontend-tunnel
     # No ports exposed - accessible through tunnel only
     build:
       context: ../frontend
