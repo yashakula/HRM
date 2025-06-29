@@ -39,6 +39,32 @@ class User(Base):
     
     # Relationships
     employees = relationship("Employee", back_populates="user")
+    
+    def has_permission(self, permission_name: str) -> bool:
+        """
+        Check if user has a specific permission based on their role.
+        Uses static role-permission mapping for efficient lookup.
+        """
+        from .permission_registry import ROLE_PERMISSIONS
+        
+        role_name = self.role.value if hasattr(self.role, 'value') else str(self.role)
+        user_permissions = ROLE_PERMISSIONS.get(role_name, [])
+        return permission_name in user_permissions
+    
+    def has_any_permission(self, permission_names: list) -> bool:
+        """Check if user has any of the specified permissions"""
+        return any(self.has_permission(perm) for perm in permission_names)
+    
+    def has_all_permissions(self, permission_names: list) -> bool:
+        """Check if user has all of the specified permissions"""
+        return all(self.has_permission(perm) for perm in permission_names)
+    
+    def get_all_permissions(self) -> list:
+        """Get all permissions for the user's current role"""
+        from .permission_registry import ROLE_PERMISSIONS
+        
+        role_name = self.role.value if hasattr(self.role, 'value') else str(self.role)
+        return ROLE_PERMISSIONS.get(role_name, [])
 
 class People(Base):
     __tablename__ = "people"
@@ -199,4 +225,28 @@ class Compensation(Base):
     # Relationships
     assignment = relationship("Assignment", back_populates="compensation_history")
     pay_type = relationship("PayTypeModel", back_populates="compensation_records")
+
+class Permission(Base):
+    __tablename__ = "permissions"
+    
+    permission_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False, unique=True, index=True)
+    description = Column(Text)
+    resource_type = Column(String(50), nullable=False, index=True)
+    action = Column(String(50), nullable=False, index=True)
+    scope = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    role_permissions = relationship("RolePermission", back_populates="permission", cascade="all, delete-orphan")
+
+class RolePermission(Base):
+    __tablename__ = "role_permissions"
+    
+    role_enum = Column(String(20), nullable=False, primary_key=True)
+    permission_id = Column(Integer, ForeignKey("permissions.permission_id"), nullable=False, primary_key=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    permission = relationship("Permission", back_populates="role_permissions")
 

@@ -17,6 +17,7 @@ export interface User {
   username: string;
   email: string;
   role: UserRole;
+  permissions?: string[]; // User's permissions based on their role
   is_active: boolean;
   created_at: string;
   employee?: Employee; // Associated employee if exists

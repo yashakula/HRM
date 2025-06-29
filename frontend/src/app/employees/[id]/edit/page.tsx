@@ -8,7 +8,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { apiClient } from '@/lib/api';
 import { EmployeeUpdateRequest } from '@/lib/types';
-import { useAuthStore } from '@/store/authStore';
+import { 
+  useAuthStore, 
+  useHasPermission
+} from '@/store/authStore';
 import AssignmentManagement from '@/components/employees/AssignmentManagement';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
@@ -54,8 +57,10 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
-  // Role checking
-  const isHRAdmin = user?.role === 'HR_ADMIN';
+  // Permission checking
+  const canUpdateAllEmployees = useHasPermission('employee.update.all');
+  const canUpdateOwnProfile = useHasPermission('employee.update.own');
+  const canViewAllEmployees = useHasPermission('employee.read.all');
 
   // Fetch existing employee data
   const { data: employee, isLoading, error } = useQuery({
@@ -105,14 +110,14 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
     },
   });
 
-  // HR Admins can edit, others can only view
-  const canEdit = isHRAdmin && isEditMode;
-  
   // Check if this is the user's own employee record
   const isOwnRecord = user?.employee?.employee_id === employeeId;
   
-  // Only show sensitive info for the employee themselves
-  const canViewSensitiveInfo = isOwnRecord;
+  // Permission-based editing logic
+  const canEditThisEmployee = (canUpdateAllEmployees || (canUpdateOwnProfile && isOwnRecord)) && isEditMode;
+  
+  // View permissions for sensitive information
+  const canViewSensitiveInfo = isOwnRecord || canViewAllEmployees;
   
   // Allow editing sensitive info if it's their own record and they're in edit mode
   const canEditSensitiveInfo = isOwnRecord && isEditMode;
@@ -150,8 +155,8 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
     // Transform form data to API format
     const employeeData: EmployeeUpdateRequest = {};
 
-    // Only HR admins can update basic employee data
-    if (canEdit) {
+    // Only users with update permissions can update basic employee data
+    if (canEditThisEmployee) {
       // Only include person data if fields have changed
       const personData: {
         full_name?: string;
@@ -245,7 +250,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                 )}
               </p>
             </div>
-            {(isHRAdmin || isOwnRecord) && (
+            {(canUpdateAllEmployees || (canUpdateOwnProfile && isOwnRecord)) && (
               <div className="flex space-x-2">
                 {isEditMode ? (
                   <button
@@ -274,7 +279,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                     onClick={() => setIsEditMode(true)}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    {isHRAdmin ? 'Edit Employee' : 'Edit My Information'}
+                    {canUpdateAllEmployees ? 'Edit Employee' : 'Edit My Information'}
                   </button>
                 )}
               </div>
@@ -285,7 +290,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
 
       {/* Form */}
       <div className="bg-white shadow rounded-lg">
-        <form onSubmit={canEdit ? handleSubmit(onSubmit) : undefined} className="px-4 py-5 sm:p-6">
+        <form onSubmit={canEditThisEmployee ? handleSubmit(onSubmit) : undefined} className="px-4 py-5 sm:p-6">
           <div className="space-y-8">
             {/* Personal Information Section */}
             <div>
@@ -293,9 +298,9 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
-                    Full Name {canEdit && '*'}
+                    Full Name {canEditThisEmployee && '*'}
                   </label>
-                  {canEdit ? (
+                  {canEditThisEmployee ? (
                     <input
                       type="text"
                       id="full_name"
@@ -306,7 +311,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                   ) : (
                     <div className="mt-1 py-2 px-3 text-gray-900">{employee.person.full_name}</div>
                   )}
-                  {errors.full_name && canEdit && (
+                  {errors.full_name && canEditThisEmployee && (
                     <p className="mt-1 text-sm text-red-600">{errors.full_name.message}</p>
                   )}
                 </div>
@@ -315,7 +320,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                   <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-700">
                     Date of Birth
                   </label>
-                  {canEdit ? (
+                  {canEditThisEmployee ? (
                     <input
                       type="date"
                       id="date_of_birth"
@@ -330,7 +335,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                       }
                     </div>
                   )}
-                  {errors.date_of_birth && canEdit && (
+                  {errors.date_of_birth && canEditThisEmployee && (
                     <p className="mt-1 text-sm text-red-600">{errors.date_of_birth.message}</p>
                   )}
                 </div>
@@ -339,7 +344,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                   <label htmlFor="personal_email" className="block text-sm font-medium text-gray-700">
                     Personal Email
                   </label>
-                  {canEdit ? (
+                  {canEditThisEmployee ? (
                     <input
                       type="email"
                       id="personal_email"
@@ -352,7 +357,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                       {employee.person.personal_information?.personal_email || '-'}
                     </div>
                   )}
-                  {errors.personal_email && canEdit && (
+                  {errors.personal_email && canEditThisEmployee && (
                     <p className="mt-1 text-sm text-red-600">{errors.personal_email.message}</p>
                   )}
                 </div>
@@ -419,7 +424,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                   <label htmlFor="work_email" className="block text-sm font-medium text-gray-700">
                     Work Email
                   </label>
-                  {canEdit ? (
+                  {canEditThisEmployee ? (
                     <input
                       type="email"
                       id="work_email"
@@ -430,7 +435,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                   ) : (
                     <div className="mt-1 py-2 px-3 text-gray-900">{employee.work_email || '-'}</div>
                   )}
-                  {errors.work_email && canEdit && (
+                  {errors.work_email && canEditThisEmployee && (
                     <p className="mt-1 text-sm text-red-600">{errors.work_email.message}</p>
                   )}
                 </div>
@@ -439,7 +444,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                   <label htmlFor="effective_start_date" className="block text-sm font-medium text-gray-700">
                     Start Date
                   </label>
-                  {canEdit ? (
+                  {canEditThisEmployee ? (
                     <input
                       type="date"
                       id="effective_start_date"
@@ -454,7 +459,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                       }
                     </div>
                   )}
-                  {errors.effective_start_date && canEdit && (
+                  {errors.effective_start_date && canEditThisEmployee && (
                     <p className="mt-1 text-sm text-red-600">{errors.effective_start_date.message}</p>
                   )}
                 </div>
@@ -463,7 +468,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                   <label htmlFor="effective_end_date" className="block text-sm font-medium text-gray-700">
                     End Date (Optional)
                   </label>
-                  {canEdit ? (
+                  {canEditThisEmployee ? (
                     <input
                       type="date"
                       id="effective_end_date"
@@ -478,7 +483,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                       }
                     </div>
                   )}
-                  {errors.effective_end_date && canEdit && (
+                  {errors.effective_end_date && canEditThisEmployee && (
                     <p className="mt-1 text-sm text-red-600">{errors.effective_end_date.message}</p>
                   )}
                 </div>
@@ -487,7 +492,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                   <label htmlFor="status" className="block text-sm font-medium text-gray-700">
                     Employee Status
                   </label>
-                  {canEdit ? (
+                  {canEditThisEmployee ? (
                     <select
                       id="status"
                       {...register('status')}
@@ -507,7 +512,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
                       </span>
                     </div>
                   )}
-                  {errors.status && canEdit && (
+                  {errors.status && canEditThisEmployee && (
                     <p className="mt-1 text-sm text-red-600">{errors.status.message}</p>
                   )}
                 </div>
@@ -526,7 +531,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
             )}
 
             {/* Form Actions - Show in edit mode for HR admins or employees editing their own info */}
-            {(canEdit || canEditSensitiveInfo) && (
+            {(canEditThisEmployee || canEditSensitiveInfo) && (
               <div className="flex justify-end space-x-4">
                 <button
                   type="button"
@@ -560,7 +565,7 @@ function EditEmployeeForm({ employeeId }: { employeeId: number }) {
             )}
 
             {/* Back to Directory Button - Only show in view mode */}
-            {!canEdit && (
+            {!canEditThisEmployee && (
               <div className="flex justify-center">
                 <button
                   type="button"

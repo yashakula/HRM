@@ -1,18 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { Employee, EmployeeSearchParams, Assignment, AssignmentCreateRequest } from '@/lib/types';
-import { useAuthStore } from '@/store/authStore';
+import { 
+  useHasPermission, 
+  useHasAnyPermission 
+} from '@/store/authStore';
 import { assignmentApi } from '@/lib/api/assignments';
 import { departmentApi } from '@/lib/api/departments';
 import { assignmentTypeApi } from '@/lib/api/assignmentTypes';
 
 export default function SearchPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
   const queryClient = useQueryClient();
   
   // Tab state
@@ -46,8 +48,20 @@ export default function SearchPage() {
     supervisor_ids: []
   });
   
-  // Check if user is HR Admin
-  const isHrAdmin = user?.role === 'HR_ADMIN';
+  // Permission checks
+  const canCreateAssignment = useHasPermission('assignment.create');
+  const canSearchEmployees = useHasAnyPermission(['employee.read.all', 'employee.read.supervised']);
+  const canViewEmployeeDetails = useHasAnyPermission(['employee.read.all', 'employee.read.supervised', 'employee.read.own']);
+  const canViewAssignments = useHasAnyPermission(['assignment.read.all', 'assignment.read.supervised', 'assignment.read.own']);
+
+  // Set default tab based on permissions
+  useEffect(() => {
+    if (!canSearchEmployees && canViewAssignments) {
+      setActiveTab('assignments');
+    } else if (canSearchEmployees && !canViewAssignments) {
+      setActiveTab('employees');
+    }
+  }, [canSearchEmployees, canViewAssignments]);
 
   // Employee queries
   const { data: employees, isLoading: employeesLoading, error: employeesError, refetch: refetchEmployees } = useQuery({
@@ -61,7 +75,7 @@ export default function SearchPage() {
         return apiClient.getAllEmployees(employeeSearchParams.skip, employeeSearchParams.limit);
       }
     },
-    enabled: activeTab === 'employees',
+    enabled: activeTab === 'employees' && canSearchEmployees,
   });
 
   // Assignment queries
@@ -194,32 +208,36 @@ export default function SearchPage() {
       <div className="bg-white shadow rounded-lg">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab('employees')}
-              className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm ${
-                activeTab === 'employees'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Employee Search
-            </button>
-            <button
-              onClick={() => setActiveTab('assignments')}
-              className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm ${
-                activeTab === 'assignments'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Assignment Search
-            </button>
+            {canSearchEmployees && (
+              <button
+                onClick={() => setActiveTab('employees')}
+                className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm ${
+                  activeTab === 'employees'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Employee Search
+              </button>
+            )}
+            {canViewAssignments && (
+              <button
+                onClick={() => setActiveTab('assignments')}
+                className={`whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm ${
+                  activeTab === 'assignments'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Assignment Search
+              </button>
+            )}
           </nav>
         </div>
 
         {/* Tab Content */}
         <div className="p-6">
-          {activeTab === 'employees' && (
+          {activeTab === 'employees' && canSearchEmployees && (
             <div className="space-y-6">
               {/* Employee Search Form */}
               <form onSubmit={handleEmployeeSearch} className="space-y-4">
@@ -382,12 +400,14 @@ export default function SearchPage() {
                               }
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <button
-                                onClick={() => router.push(`/employees/${employee.employee_id}/edit`)}
-                                className="text-blue-600 hover:text-blue-900 focus:outline-none focus:underline"
-                              >
-                                View
-                              </button>
+                              {canViewEmployeeDetails && (
+                                <button
+                                  onClick={() => router.push(`/employees/${employee.employee_id}/edit`)}
+                                  className="text-blue-600 hover:text-blue-900 focus:outline-none focus:underline"
+                                >
+                                  View
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -399,13 +419,13 @@ export default function SearchPage() {
             </div>
           )}
 
-          {activeTab === 'assignments' && (
+          {activeTab === 'assignments' && canViewAssignments && (
             <div className="space-y-6">
               {/* Assignment Filter Controls */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium text-gray-900">Filter Assignments</h3>
-                  {isHrAdmin && (
+                  {canCreateAssignment && (
                     <button
                       onClick={() => setIsCreateDialogOpen(true)}
                       className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
@@ -640,7 +660,7 @@ export default function SearchPage() {
                   <div className="text-6xl mb-4">👥</div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No assignments found</h3>
                   <p className="text-gray-700 mb-4">No assignments match your current filters</p>
-                  {isHrAdmin && (
+                  {canCreateAssignment && (
                     <button
                       onClick={() => setIsCreateDialogOpen(true)}
                       className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -650,6 +670,15 @@ export default function SearchPage() {
                   )}
                 </div>
               ) : null}
+            </div>
+          )}
+
+          {/* No access message */}
+          {!canSearchEmployees && !canViewAssignments && (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🔒</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Access Restricted</h3>
+              <p className="text-gray-700">You don&apos;t have permission to search employees or view assignments.</p>
             </div>
           )}
         </div>

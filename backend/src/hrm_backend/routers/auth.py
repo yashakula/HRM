@@ -93,12 +93,18 @@ def read_current_user(current_user: User = Depends(get_current_active_user), db:
     # Fetch the associated employee for this user
     employee = db.query(models.Employee).filter(models.Employee.user_id == current_user.user_id).first()
     
-    # Create response with employee info if available
+    # Get user permissions based on their role
+    from ..permission_registry import ROLE_PERMISSIONS
+    role_name = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+    user_permissions = ROLE_PERMISSIONS.get(role_name, [])
+    
+    # Create response with employee info and permissions
     user_data = {
         "user_id": current_user.user_id,
         "username": current_user.username,
         "email": current_user.email,
         "role": current_user.role,
+        "permissions": user_permissions,
         "is_active": current_user.is_active,
         "created_at": current_user.created_at,
         "employee": employee

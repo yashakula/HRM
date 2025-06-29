@@ -3,8 +3,12 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
-import { LeaveRequestCreateRequest, LeaveStatus, UserRole } from '@/lib/types';
-import { useAuthStore } from '@/store/authStore';
+import { LeaveRequestCreateRequest, LeaveStatus } from '@/lib/types';
+import { 
+  useAuthStore, 
+  useHasPermission, 
+  useHasAnyPermission 
+} from '@/store/authStore';
 
 interface LeaveRequestFormData {
   assignment_id: string;
@@ -16,6 +20,11 @@ interface LeaveRequestFormData {
 export default function LeaveRequestPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  
+  // Permission checks
+  const canCreateLeaveRequest = useHasAnyPermission(['leave_request.create.all', 'leave_request.create.own']);
+  const canViewOwnLeaveRequests = useHasPermission('leave_request.read.own');
+  const canViewAllLeaveRequests = useHasPermission('leave_request.read.all');
   
   const [formData, setFormData] = useState<LeaveRequestFormData>({
     assignment_id: '',
@@ -125,12 +134,12 @@ export default function LeaveRequestPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  if (!user || user.role !== UserRole.EMPLOYEE) {
+  if (!user || (!canCreateLeaveRequest && !canViewOwnLeaveRequests)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-md">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
-          <p className="text-gray-600">Only employees can submit leave requests.</p>
+          <p className="text-gray-600">You don&apos;t have permission to view or create leave requests.</p>
         </div>
       </div>
     );
@@ -160,9 +169,14 @@ export default function LeaveRequestPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className={`grid gap-8 ${
+          canCreateLeaveRequest && (canViewOwnLeaveRequests || canViewAllLeaveRequests) 
+            ? 'grid-cols-1 lg:grid-cols-2' 
+            : 'grid-cols-1 max-w-2xl mx-auto'
+        }`}>
           {/* Leave Request Form */}
-          <div className="bg-white shadow-sm rounded-lg">
+          {canCreateLeaveRequest && (
+            <div className="bg-white shadow-sm rounded-lg">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-900">New Leave Request</h2>
             </div>
@@ -266,9 +280,11 @@ export default function LeaveRequestPage() {
               )}
             </form>
           </div>
+          )}
 
           {/* Leave Request History */}
-          <div className="bg-white shadow-sm rounded-lg">
+          {(canViewOwnLeaveRequests || canViewAllLeaveRequests) && (
+            <div className="bg-white shadow-sm rounded-lg">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-900">Your Leave Requests</h2>
             </div>
@@ -315,6 +331,18 @@ export default function LeaveRequestPage() {
               )}
             </div>
           </div>
+          )}
+          
+          {/* No access message */}
+          {!canCreateLeaveRequest && !canViewOwnLeaveRequests && !canViewAllLeaveRequests && (
+            <div className="bg-white shadow-sm rounded-lg">
+              <div className="p-8 text-center">
+                <div className="text-6xl mb-4">🔒</div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Leave Request Access</h3>
+                <p className="text-gray-600">You don&apos;t have permission to view or create leave requests.</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

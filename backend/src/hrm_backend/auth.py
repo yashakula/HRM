@@ -120,43 +120,9 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-# Role-based access control decorators
-def require_role(required_role: UserRole):
-    """Decorator to require specific user role"""
-    def role_checker(current_user: User = Depends(get_current_active_user)) -> User:
-        if current_user.role != required_role:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access denied. Required role: {required_role.value}"
-            )
-        return current_user
-    return role_checker
-
-def require_hr_admin():
-    """Require HR Admin role"""
-    return require_role(UserRole.HR_ADMIN)
-
-def require_supervisor_or_admin():
-    """Require Supervisor or HR Admin role"""
-    def role_checker(current_user: User = Depends(get_current_active_user)) -> User:
-        if current_user.role not in [UserRole.SUPERVISOR, UserRole.HR_ADMIN]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. Required role: Supervisor or HR Admin"
-            )
-        return current_user
-    return role_checker
-
-def require_employee_or_admin():
-    """Require Employee or HR Admin role (for personal data access)"""
-    def role_checker(current_user: User = Depends(get_current_active_user)) -> User:
-        if current_user.role not in [UserRole.EMPLOYEE, UserRole.HR_ADMIN]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. Required role: Employee or HR Admin"
-            )
-        return current_user
-    return role_checker
+# Legacy role-based access control decorators removed
+# Use permission-based decorators instead:
+# from ..permission_decorators import require_permission, require_any_permission
 
 # Response filtering utility functions
 def get_employee_by_user_id(db: Session, user_id: int) -> Optional[Employee]:
@@ -200,25 +166,16 @@ def filter_employee_response(
     db: Session
 ) -> Union[schemas.EmployeeResponseHR, schemas.EmployeeResponseOwner, schemas.EmployeeResponseBasic]:
     """
-    Central filtering function that returns appropriately filtered employee response
-    based on user role and ownership
+    DEPRECATED: Use filter_employee_response_by_permissions instead
+    
+    Legacy filtering function that returns appropriately filtered employee response
+    based on user role and ownership. Maintained for backward compatibility.
     """
-    # HR_ADMIN gets full access
-    if current_user.role == UserRole.HR_ADMIN:
-        return schemas.EmployeeResponseHR.model_validate(employee_data)
+    # Import new permission-based function
+    from .response_filtering import filter_employee_response_by_permissions
     
-    # Check if user owns the employee record
-    is_owner = check_employee_ownership(current_user, employee_data.employee_id, db)
-    if is_owner:
-        return schemas.EmployeeResponseOwner.model_validate(employee_data)
-    
-    # Check if supervisor has access (optional - for viewing only)
-    is_supervisor = check_supervisor_relationship(current_user, employee_data.employee_id, db)
-    if is_supervisor:
-        return schemas.EmployeeResponseBasic.model_validate(employee_data)
-    
-    # Default to basic schema for all other cases
-    return schemas.EmployeeResponseBasic.model_validate(employee_data)
+    # Use the new permission-based filtering system
+    return filter_employee_response_by_permissions(employee_data, current_user, db)
 
 def determine_employee_response_schema(
     current_user: User, 
@@ -226,24 +183,16 @@ def determine_employee_response_schema(
     db: Session
 ) -> type:
     """
-    Helper function to determine which schema class to use based on user role and ownership
+    DEPRECATED: Use determine_employee_response_schema_by_permissions instead
+    
+    Legacy helper function to determine which schema class to use based on user role and ownership.
+    Maintained for backward compatibility.
     """
-    # HR_ADMIN gets full access
-    if current_user.role == UserRole.HR_ADMIN:
-        return schemas.EmployeeResponseHR
+    # Import new permission-based function
+    from .response_filtering import determine_employee_response_schema_by_permissions
     
-    # Check ownership
-    is_owner = check_employee_ownership(current_user, employee_id, db)
-    if is_owner:
-        return schemas.EmployeeResponseOwner
-    
-    # Check supervisor relationship
-    is_supervisor = check_supervisor_relationship(current_user, employee_id, db)
-    if is_supervisor:
-        return schemas.EmployeeResponseBasic
-    
-    # Default to basic schema
-    return schemas.EmployeeResponseBasic
+    # Use the new permission-based schema determination
+    return determine_employee_response_schema_by_permissions(current_user, employee_id, db)
 
 # Ownership validation middleware
 def create_access_denied_response(resource_type: str, resource_id: int, user_role: str) -> HTTPException:
@@ -372,120 +321,5 @@ def check_assignment_supervisor_relationship(current_user: User, assignment_id: 
     
     return assignment_supervisor is not None
 
-def validate_assignment_access(allow_supervisor_access: bool = False):
-    """
-    Decorator to validate assignment access based on ownership and role.
-    
-    Args:
-        allow_supervisor_access: If True, supervisors can access assignments they supervise
-    
-    Returns:
-        Decorator function that validates assignment access
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            # Extract assignment_id from function arguments
-            assignment_id = kwargs.get('assignment_id')
-            if assignment_id is None:
-                # Try to find it in args (positional arguments)
-                for arg in args:
-                    if isinstance(arg, int):
-                        assignment_id = arg
-                        break
-            
-            if assignment_id is None:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Assignment ID not found in request"
-                )
-            
-            # Get current user (should be injected via dependency)
-            current_user = kwargs.get('current_user')
-            if current_user is None:
-                # Look for it in function arguments
-                for arg in args:
-                    if isinstance(arg, User):
-                        current_user = arg
-                        break
-            
-            if current_user is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication required"
-                )
-            
-            # Get database session
-            db = kwargs.get('db')
-            if db is None:
-                # Look for it in function arguments
-                for arg in args:
-                    if isinstance(arg, Session):
-                        db = arg
-                        break
-            
-            if db is None:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Database session not available"
-                )
-            
-            # HR_ADMIN can access any assignment
-            if current_user.role == UserRole.HR_ADMIN:
-                return await func(*args, **kwargs)
-            
-            # Check if user owns the assignment (is the assigned employee)
-            if check_assignment_ownership(current_user, assignment_id, db):
-                return await func(*args, **kwargs)
-            
-            # Check supervisor access if allowed
-            if allow_supervisor_access and current_user.role == UserRole.SUPERVISOR:
-                if check_assignment_supervisor_relationship(current_user, assignment_id, db):
-                    return await func(*args, **kwargs)
-            
-            # Return 403 Forbidden using standardized response
-            raise create_access_denied_response("assignment", assignment_id, current_user.role.value)
-        
-        return wrapper
-    return decorator
-
-def filter_assignments_by_role(current_user: User, db: Session, assignments: list) -> list:
-    """
-    Filter assignment list based on user role and relationships.
-    
-    Args:
-        current_user: The current authenticated user
-        db: Database session
-        assignments: List of assignment objects to filter
-    
-    Returns:
-        Filtered list of assignments the user is authorized to see
-    """
-    # HR_ADMIN can see all assignments
-    if current_user.role == UserRole.HR_ADMIN:
-        return assignments
-    
-    # Get user's employee record
-    user_employee = get_employee_by_user_id(db, current_user.user_id)
-    if not user_employee:
-        return []  # User has no employee record, cannot see any assignments
-    
-    filtered_assignments = []
-    
-    for assignment in assignments:
-        # Employee can see their own assignments
-        if assignment.employee_id == user_employee.employee_id:
-            filtered_assignments.append(assignment)
-            continue
-        
-        # Supervisor can see assignments they supervise
-        if current_user.role == UserRole.SUPERVISOR:
-            is_supervisor = db.query(AssignmentSupervisor).filter(
-                AssignmentSupervisor.assignment_id == assignment.assignment_id,
-                AssignmentSupervisor.supervisor_id == user_employee.employee_id
-            ).first()
-            
-            if is_supervisor:
-                filtered_assignments.append(assignment)
-    
-    return filtered_assignments
+# Legacy assignment access validation functions removed
+# Use permission-based validation from permission_validation.py instead
