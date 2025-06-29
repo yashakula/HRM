@@ -1,26 +1,27 @@
 # RBAC Permissions Reference Guide
 
 ## Overview
-This document provides a comprehensive reference for the Role-Based Access Control (RBAC) system implemented in the HRM application. The system uses a permission-based approach with fine-grained access control across all system resources.
+This document provides a comprehensive reference for the Multi-Role Based Access Control (RBAC) system implemented in the HRM application. The system supports both single-role and multi-role assignments with fine-grained permission-based access control across all system resources.
 
 - **Total Permissions**: 39 permissions across 8 resource types
 - **Total Roles**: 3 user roles (HR_ADMIN, SUPERVISOR, EMPLOYEE)
 - **Permission Structure**: `resource.action.scope` format (e.g., `employee.read.all`)
-- **Architecture**: Enhanced single-role system with permission-based authorization
+- **Architecture**: Multi-role RBAC with backward compatibility for single-role users
+- **Multi-Role Support**: Users can be assigned multiple roles simultaneously with aggregated permissions
 
 ## Complete Role-Permission Matrix
 
-| Permission | Description | HR_ADMIN | SUPERVISOR | EMPLOYEE |
-|------------|-------------|----------|------------|----------|
+| Permission | Description | SUPER_USER | HR_ADMIN | SUPERVISOR | EMPLOYEE |
+|------------|-------------|------------|----------|------------|----------|
 | **EMPLOYEE MANAGEMENT** |
-| `employee.create` | Create new employees | ✅ | ❌ | ❌ |
-| `employee.read.all` | Read all employee records | ✅ | ❌ | ❌ |
-| `employee.read.supervised` | Read supervised employee records | ❌ | ✅ | ❌ |
-| `employee.read.own` | Read own employee record | ❌ | ✅ | ✅ |
-| `employee.update.all` | Update all employee records | ✅ | ❌ | ❌ |
-| `employee.update.own` | Update own employee record | ❌ | ✅ | ✅ |
-| `employee.search` | Search employee records | ✅ | ✅ | ❌ |
-| `employee.deactivate` | Deactivate employee accounts | ✅ | ❌ | ❌ |
+| `employee.create` | Create new employees | ✅ | ✅ | ❌ | ❌ |
+| `employee.read.all` | Read all employee records | ✅ | ✅ | ❌ | ❌ |
+| `employee.read.supervised` | Read supervised employee records | ✅ | ❌ | ✅ | ❌ |
+| `employee.read.own` | Read own employee record | ✅ | ❌ | ✅ | ✅ |
+| `employee.update.all` | Update all employee records | ✅ | ✅ | ❌ | ❌ |
+| `employee.update.own` | Update own employee record | ✅ | ❌ | ✅ | ✅ |
+| `employee.search` | Search employee records | ✅ | ✅ | ✅ | ❌ |
+| `employee.deactivate` | Deactivate employee accounts | ✅ | ✅ | ❌ | ❌ |
 | **ASSIGNMENT MANAGEMENT** |
 | `assignment.create` | Create new assignments | ✅ | ❌ | ❌ |
 | `assignment.read.all` | Read all assignments | ✅ | ❌ | ❌ |
@@ -98,11 +99,12 @@ This document provides a comprehensive reference for the Role-Based Access Contr
 - **Database**: Static role-permission mappings for efficient lookup
 - **Context-Aware**: Automatic ownership and supervision validation
 
-### Role Assignment
-- **Single Role Per User**: Each user has exactly one role (HR_ADMIN, SUPERVISOR, EMPLOYEE)
-- **Permission Inheritance**: Users inherit all permissions assigned to their role
-- **Dynamic Evaluation**: Permissions evaluated at runtime with context awareness
-- **Admin Management**: HR admins can change user roles via admin panel
+### Multi-Role Assignment
+- **Multiple Roles Per User**: Users can be assigned multiple roles simultaneously (e.g., SUPERVISOR + HR_ADMIN)
+- **Permission Aggregation**: Users inherit permissions from ALL assigned roles (union of all role permissions)
+- **Dynamic Evaluation**: Permissions evaluated at runtime with context awareness across all roles
+- **Admin Management**: Only SUPER_USER can change user roles via admin panel
+- **Role Management APIs**: Complete CRUD operations for multi-role assignments with effective dates
 
 ## Usage Examples
 

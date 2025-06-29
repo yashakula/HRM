@@ -15,7 +15,7 @@ from ..auth import (
 )
 from ..database import get_db
 from .. import models
-from ..models import User, UserRole
+from ..models import User
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -46,8 +46,7 @@ def register_user(
     db_user = User(
         username=user.username,
         email=user.email,
-        password_hash=hashed_password,
-        role=user.role
+        password_hash=hashed_password
     )
     db.add(db_user)
     db.commit()
@@ -84,7 +83,7 @@ def login_user(
     return {"message": "Login successful", "user": {
         "user_id": user.user_id,
         "username": user.username,
-        "role": user.role.value
+        "roles": user.role_names
     }}
 
 @router.get("/me", response_model=schemas.UserResponse)
@@ -93,17 +92,15 @@ def read_current_user(current_user: User = Depends(get_current_active_user), db:
     # Fetch the associated employee for this user
     employee = db.query(models.Employee).filter(models.Employee.user_id == current_user.user_id).first()
     
-    # Get user permissions based on their role
-    from ..permission_registry import ROLE_PERMISSIONS
-    role_name = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
-    user_permissions = ROLE_PERMISSIONS.get(role_name, [])
+    # Get user permissions based on their role(s) - multi-role aware
+    user_permissions = current_user.get_all_permissions()
     
-    # Create response with employee info and permissions
+    # Create response with employee info and permissions (multi-role system)
     user_data = {
         "user_id": current_user.user_id,
         "username": current_user.username,
         "email": current_user.email,
-        "role": current_user.role,
+        "roles": current_user.role_names,
         "permissions": user_permissions,
         "is_active": current_user.is_active,
         "created_at": current_user.created_at,
@@ -134,7 +131,7 @@ def validate_page_access(
     """
     page_id = request.page_identifier
     resource_id = request.resource_id
-    user_role = current_user.role
+    user_roles = current_user.role_names
     
     # Define page access rules
     permissions = _get_page_permissions(page_id, resource_id, current_user, db)
@@ -156,170 +153,165 @@ def _get_page_permissions(
     Internal function to determine user permissions for specific pages.
     Implements comprehensive page-level access control logic.
     """
-    user_role = current_user.role
+    user_roles = current_user.role_names
     
     # Employee creation page - HR Admin only
     if page_identifier == "employees/create":
-        if user_role == UserRole.HR_ADMIN:
+        if current_user.has_permission("employee.create"):
             return schemas.PageAccessPermissions(
                 can_view=True, can_edit=False, can_create=True, can_delete=False,
-                message="HR Admin can create employees",
-                user_role=user_role.value,
-                required_permissions=["HR_ADMIN"]
+                message="User can create employees",
+                user_role=",".join(user_roles),
+                required_permissions=["employee.create"]
             )
         else:
             return schemas.PageAccessPermissions(
                 can_view=False, can_edit=False, can_create=False, can_delete=False,
-                message="Only HR Admin can create employees",
-                user_role=user_role.value,
-                required_permissions=["HR_ADMIN"]
+                message="User does not have permission to create employees",
+                user_role=",".join(user_roles),
+                required_permissions=["employee.create"]
             )
     
-    # Departments management - HR Admin and Supervisors only
+    # Departments management - Permission-based access
     elif page_identifier == "departments" or page_identifier.startswith("departments/"):
-        if user_role == UserRole.HR_ADMIN:
+        can_create = current_user.has_permission("department.create")
+        can_update = current_user.has_permission("department.update") 
+        can_delete = current_user.has_permission("department.delete")
+        can_read = current_user.has_permission("department.read")
+        
+        if can_read:
             return schemas.PageAccessPermissions(
-                can_view=True, can_edit=True, can_create=True, can_delete=True,
-                message="HR Admin has full department management access",
-                user_role=user_role.value,
-                required_permissions=["HR_ADMIN"]
-            )
-        elif user_role == UserRole.SUPERVISOR:
-            return schemas.PageAccessPermissions(
-                can_view=True, can_edit=False, can_create=False, can_delete=False,
-                message="Supervisors can view departments",
-                user_role=user_role.value,
-                required_permissions=["SUPERVISOR"]
+                can_view=True, can_edit=can_update, can_create=can_create, can_delete=can_delete,
+                message="User has department access based on permissions",
+                user_role=",".join(user_roles),
+                required_permissions=["department.read"]
             )
         else:
             return schemas.PageAccessPermissions(
                 can_view=False, can_edit=False, can_create=False, can_delete=False,
-                message="Only HR Admin and Supervisors can access departments",
-                user_role=user_role.value,
-                required_permissions=["HR_ADMIN", "SUPERVISOR"]
+                message="User does not have permission to access departments",
+                user_role=",".join(user_roles),
+                required_permissions=["department.read"]
             )
     
     # Employee profile pages with specific employee ID
     elif page_identifier == "employees/view" and resource_id:
         employee_id = resource_id
         
-        # HR Admin can view any employee
-        if user_role == UserRole.HR_ADMIN:
+        # Check various permission levels
+        can_read_all = current_user.has_permission("employee.read.all")
+        can_update_all = current_user.has_permission("employee.update.all")
+        
+        if can_read_all:
             return schemas.PageAccessPermissions(
-                can_view=True, can_edit=True, can_create=False, can_delete=False,
-                message="HR Admin can view and edit any employee",
-                user_role=user_role.value,
-                required_permissions=["HR_ADMIN"]
+                can_view=True, can_edit=can_update_all, can_create=False, can_delete=False,
+                message="User can view all employee profiles",
+                user_role=",".join(user_roles),
+                required_permissions=["employee.read.all"]
             )
         
         # Check if user owns the employee record
         is_owner = check_employee_ownership(current_user, employee_id, db)
-        if is_owner:
+        if is_owner and current_user.has_permission("employee.read.own"):
+            can_update_own = current_user.has_permission("employee.update.own")
             return schemas.PageAccessPermissions(
-                can_view=True, can_edit=True, can_create=False, can_delete=False,
-                message="Employee can view and edit their own profile",
-                user_role=user_role.value,
-                required_permissions=["resource_owner"]
+                can_view=True, can_edit=can_update_own, can_create=False, can_delete=False,
+                message="Employee can view their own profile",
+                user_role=",".join(user_roles),
+                required_permissions=["employee.read.own"]
             )
         
         # Check if supervisor has access
-        if user_role == UserRole.SUPERVISOR:
-            is_supervisor = check_supervisor_relationship(current_user, employee_id, db)
-            if is_supervisor:
-                return schemas.PageAccessPermissions(
-                    can_view=True, can_edit=False, can_create=False, can_delete=False,
-                    message="Supervisor can view supervisee profiles",
-                    user_role=user_role.value,
-                    required_permissions=["supervisor"]
-                )
+        is_supervisor = check_supervisor_relationship(current_user, employee_id, db)
+        if is_supervisor and current_user.has_permission("employee.read.supervised"):
+            return schemas.PageAccessPermissions(
+                can_view=True, can_edit=False, can_create=False, can_delete=False,
+                message="Supervisor can view supervisee profiles",
+                user_role=",".join(user_roles),
+                required_permissions=["employee.read.supervised"]
+            )
         
         # Default deny
         return schemas.PageAccessPermissions(
             can_view=False, can_edit=False, can_create=False, can_delete=False,
             message="Insufficient permissions to access this employee profile",
-            user_role=user_role.value,
-            required_permissions=["HR_ADMIN", "resource_owner", "supervisor"]
+            user_role=",".join(user_roles),
+            required_permissions=["employee.read.all", "employee.read.own", "employee.read.supervised"]
         )
     
     # Employee edit pages
     elif page_identifier == "employees/edit" and resource_id:
         employee_id = resource_id
         
-        # HR Admin can edit any employee
-        if user_role == UserRole.HR_ADMIN:
+        # Check if user can edit all employees
+        if current_user.has_permission("employee.update.all"):
             return schemas.PageAccessPermissions(
                 can_view=True, can_edit=True, can_create=False, can_delete=False,
-                message="HR Admin can edit any employee",
-                user_role=user_role.value,
-                required_permissions=["HR_ADMIN"]
+                message="User can edit all employee profiles",
+                user_role=",".join(user_roles),
+                required_permissions=["employee.update.all"]
             )
         
-        # Check if user owns the employee record
+        # Check if user owns the employee record and can edit own
         is_owner = check_employee_ownership(current_user, employee_id, db)
-        if is_owner:
+        if is_owner and current_user.has_permission("employee.update.own"):
             return schemas.PageAccessPermissions(
                 can_view=True, can_edit=True, can_create=False, can_delete=False,
                 message="Employee can edit their own profile",
-                user_role=user_role.value,
-                required_permissions=["resource_owner"]
+                user_role=",".join(user_roles),
+                required_permissions=["employee.update.own"]
             )
         
-        # Supervisors cannot edit employee records
+        # Default deny
         return schemas.PageAccessPermissions(
             can_view=False, can_edit=False, can_create=False, can_delete=False,
-            message="Only HR Admin or employee themselves can edit employee profiles",
-            user_role=user_role.value,
-            required_permissions=["HR_ADMIN", "resource_owner"]
+            message="Insufficient permissions to edit employee profile",
+            user_role=",".join(user_roles),
+            required_permissions=["employee.update.all", "employee.update.own"]
         )
     
-    # Assignment management - HR Admin only
+    # Assignment management - Permission-based access
     elif page_identifier == "assignments" or page_identifier.startswith("assignments/create"):
-        if user_role == UserRole.HR_ADMIN:
-            return schemas.PageAccessPermissions(
-                can_view=True, can_edit=True, can_create=True, can_delete=True,
-                message="HR Admin has full assignment management access",
-                user_role=user_role.value,
-                required_permissions=["HR_ADMIN"]
-            )
-        else:
-            return schemas.PageAccessPermissions(
-                can_view=True, can_edit=False, can_create=False, can_delete=False,
-                message="Users can view assignments but cannot manage them",
-                user_role=user_role.value,
-                required_permissions=["authenticated"]
-            )
+        can_create = current_user.has_permission("assignment.create")
+        can_update = current_user.has_permission("assignment.update.all") 
+        can_delete = current_user.has_permission("assignment.delete")
+        can_read = (current_user.has_permission("assignment.read.all") or 
+                   current_user.has_permission("assignment.read.supervised") or
+                   current_user.has_permission("assignment.read.own"))
+        
+        return schemas.PageAccessPermissions(
+            can_view=can_read, can_edit=can_update, can_create=can_create, can_delete=can_delete,
+            message="Assignment access based on user permissions",
+            user_role=",".join(user_roles),
+            required_permissions=["assignment.read.*"]
+        )
     
     # Profile page - all authenticated users can access their own profile
     elif page_identifier == "profile":
         return schemas.PageAccessPermissions(
             can_view=True, can_edit=True, can_create=False, can_delete=False,
             message="All authenticated users can view and edit their own profile",
-            user_role=user_role.value,
+            user_role=",".join(user_roles),
             required_permissions=["authenticated"]
         )
     
-    # Search page (employee and assignment search) - HR Admin and Supervisors only  
+    # Search page (employee and assignment search) - Permission-based access
     elif page_identifier == "search" or page_identifier == "employees" or page_identifier == "employees/search":
-        if user_role == UserRole.HR_ADMIN:
+        can_search = current_user.has_permission("employee.search")
+        
+        if can_search:
             return schemas.PageAccessPermissions(
                 can_view=True, can_edit=False, can_create=False, can_delete=False,
-                message="HR Admin can search all employees and assignments",
-                user_role=user_role.value,
-                required_permissions=["HR_ADMIN"]
-            )
-        elif user_role == UserRole.SUPERVISOR:
-            return schemas.PageAccessPermissions(
-                can_view=True, can_edit=False, can_create=False, can_delete=False,
-                message="Supervisors can search employees and assignments",
-                user_role=user_role.value,
-                required_permissions=["SUPERVISOR"]
+                message="User can search employees and assignments",
+                user_role=",".join(user_roles),
+                required_permissions=["employee.search"]
             )
         else:
             return schemas.PageAccessPermissions(
                 can_view=False, can_edit=False, can_create=False, can_delete=False,
-                message="Only HR Admin and Supervisors can access search functionality",
-                user_role=user_role.value,
-                required_permissions=["HR_ADMIN", "SUPERVISOR"]
+                message="User does not have permission to search",
+                user_role=",".join(user_roles),
+                required_permissions=["employee.search"]
             )
     
     # Default case - authenticated users can view
@@ -327,6 +319,6 @@ def _get_page_permissions(
         return schemas.PageAccessPermissions(
             can_view=True, can_edit=False, can_create=False, can_delete=False,
             message="Basic page access for authenticated users",
-            user_role=user_role.value,
+            user_role=",".join(user_roles),
             required_permissions=["authenticated"]
         )

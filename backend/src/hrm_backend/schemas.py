@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import date, datetime
 from typing import Optional, Union, List
-from .models import EmployeeStatus, UserRole, LeaveStatus
+from .models import EmployeeStatus, LeaveStatus
 
 class PersonCreate(BaseModel):
     full_name: str
@@ -182,7 +182,6 @@ class UserCreate(BaseModel):
     username: str
     email: str
     password: str
-    role: UserRole
 
 class UserLogin(BaseModel):
     username: str
@@ -192,11 +191,56 @@ class UserResponse(BaseModel):
     user_id: int
     username: str
     email: str
-    role: UserRole
-    permissions: Optional[List[str]] = None  # User's permissions based on role
+    roles: List[str] = []  # Active role names from multi-role system
+    permissions: List[str] = []  # Aggregated permissions from all roles
     is_active: bool
     created_at: datetime
     employee: Optional["EmployeeResponse"] = None  # Associated employee if exists
+
+    class Config:
+        from_attributes = True
+
+# Multi-role schemas
+class RoleResponse(BaseModel):
+    role_id: int
+    name: str
+    description: Optional[str]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class UserRoleAssignmentResponse(BaseModel):
+    user_id: int
+    role_id: int
+    assigned_at: datetime
+    assigned_by: Optional[int]
+    is_active: bool
+    effective_start_date: date
+    effective_end_date: Optional[date]
+    notes: Optional[str]
+    role: RoleResponse
+
+    class Config:
+        from_attributes = True
+
+class UserRoleAssignmentCreate(BaseModel):
+    role_name: str
+    effective_start_date: Optional[date] = None
+    effective_end_date: Optional[date] = None
+    notes: Optional[str] = None
+
+class UserWithRolesResponse(BaseModel):
+    user_id: int
+    username: str
+    email: str
+    is_active: bool
+    created_at: datetime
+    role_assignments: List[UserRoleAssignmentResponse]
+    aggregated_permissions: List[str]
+    employee: Optional["EmployeeResponse"] = None
 
     class Config:
         from_attributes = True

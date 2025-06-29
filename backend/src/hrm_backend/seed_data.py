@@ -10,30 +10,47 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Standard seed users
+# Standard seed users with multi-role support
 SEED_USERS = [
+    {
+        "username": "super_user",
+        "email": "superuser@company.com", 
+        "password": "superuser123",
+        "roles": ["SUPER_USER"]
+    },
     {
         "username": "hr_admin",
         "email": "hr.admin@company.com", 
         "password": "admin123",
-        "role": models.UserRole.HR_ADMIN
+        "roles": ["HR_ADMIN"]
     },
     {
         "username": "supervisor1",
         "email": "supervisor1@company.com",
         "password": "super123", 
-        "role": models.UserRole.SUPERVISOR
+        "roles": ["SUPERVISOR"]
     },
     {
         "username": "employee1",
         "email": "employee1@company.com",
         "password": "emp123",
-        "role": models.UserRole.EMPLOYEE
+        "roles": ["EMPLOYEE"]
     }
 ]
 
 # Standard seed employees (linked to users for proper ownership validation)
 SEED_EMPLOYEES = [
+    {
+        "person": {"full_name": "System Administrator", "date_of_birth": "1980-01-01"},
+        "personal_information": {
+            "personal_email": "sysadmin@personal.com",
+            "ssn": "000-00-0000",
+            "bank_account": "ACC000000000"
+        },
+        "work_email": "sysadmin@company.com",
+        "effective_start_date": "2015-01-01",
+        "linked_username": "super_user"  # Links to super_user user
+    },
     {
         "person": {"full_name": "Alice Johnson", "date_of_birth": "1985-03-15"},
         "personal_information": {
@@ -175,7 +192,7 @@ def assignment_type_exists(db: Session, description: str, department_id: int) ->
     ).first() is not None
 
 def create_seed_users(db: Session) -> dict:
-    """Create seed users if they don't exist"""
+    """Create seed users with multi-role support if they don't exist"""
     created_users = {}
     
     for user_data in SEED_USERS:
@@ -185,14 +202,35 @@ def create_seed_users(db: Session) -> dict:
             db_user = models.User(
                 username=user_data["username"],
                 email=user_data["email"],
-                password_hash=hashed_password,
-                role=user_data["role"]
+                password_hash=hashed_password
             )
             db.add(db_user)
             db.commit()
             db.refresh(db_user)
+            
+            # Assign roles to the user
+            for role_name in user_data["roles"]:
+                # Get or create the role
+                role = db.query(models.Role).filter(models.Role.name == role_name).first()
+                if not role:
+                    logger.error(f"Role {role_name} not found for user {user_data['username']}")
+                    continue
+                
+                # Create role assignment
+                role_assignment = models.UserRoleAssignment(
+                    user_id=db_user.user_id,
+                    role_id=role.role_id,
+                    assigned_by=None,  # System assignment
+                    is_active=True,
+                    effective_start_date=db.query(models.func.current_date()).scalar(),
+                    notes=f"Initial seed assignment for {role_name}"
+                )
+                db.add(role_assignment)
+            
+            db.commit()
+            db.refresh(db_user)
             created_users[user_data["username"]] = db_user
-            logger.info(f"Created seed user: {user_data['username']}")
+            logger.info(f"Created seed user: {user_data['username']} with roles: {user_data['roles']}")
         else:
             # Get existing user
             existing_user = db.query(models.User).filter(

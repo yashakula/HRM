@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, AdminUser, UserRoleDistribution, SystemHealth } from '@/lib/api/admin';
 import { useHasPermission } from '@/store/authStore';
+import { UserRole } from '@/lib/types';
 
 export default function AdminPage() {
   const canManageUsers = useHasPermission('user.manage');
@@ -196,8 +197,9 @@ function SystemOverview({
                   <div className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        roleData.role === 'HR_ADMIN' ? 'bg-red-100 text-red-800' :
-                        roleData.role === 'SUPERVISOR' ? 'bg-blue-100 text-blue-800' :
+                        roleData.role === UserRole.HR_ADMIN ? 'bg-red-100 text-red-800' :
+                        roleData.role === UserRole.SUPERVISOR ? 'bg-blue-100 text-blue-800' :
+                        roleData.role === UserRole.SUPER_USER ? 'bg-purple-100 text-purple-800' :
                         'bg-green-100 text-green-800'
                       }`}>
                         {roleData.role.replace('_', ' ')}
@@ -213,8 +215,9 @@ function SystemOverview({
                     <div className="w-32 bg-gray-200 rounded-full h-2">
                       <div 
                         className={`h-2 rounded-full ${
-                          roleData.role === 'HR_ADMIN' ? 'bg-red-600' :
-                          roleData.role === 'SUPERVISOR' ? 'bg-blue-600' :
+                          roleData.role === UserRole.HR_ADMIN ? 'bg-red-600' :
+                          roleData.role === UserRole.SUPERVISOR ? 'bg-blue-600' :
+                          roleData.role === UserRole.SUPER_USER ? 'bg-purple-600' :
                           'bg-green-600'
                         }`}
                         style={{ width: `${roleData.percentage}%` }}
@@ -287,9 +290,10 @@ function UserManagement() {
           className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
         >
           <option value="">All Roles</option>
-          <option value="HR_ADMIN">HR Admin</option>
-          <option value="SUPERVISOR">Supervisor</option>
-          <option value="EMPLOYEE">Employee</option>
+          <option value={UserRole.SUPER_USER}>Super User</option>
+          <option value={UserRole.HR_ADMIN}>HR Admin</option>
+          <option value={UserRole.SUPERVISOR}>Supervisor</option>
+          <option value={UserRole.EMPLOYEE}>Employee</option>
         </select>
       </div>
 
@@ -325,13 +329,18 @@ function UserManagement() {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    user.role === 'HR_ADMIN' ? 'bg-red-100 text-red-800' :
-                    user.role === 'SUPERVISOR' ? 'bg-blue-100 text-blue-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
-                    {user.role.replace('_', ' ')}
-                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {user.roles.map(role => (
+                      <span key={role} className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        role === UserRole.HR_ADMIN ? 'bg-red-100 text-red-800' :
+                        role === UserRole.SUPERVISOR ? 'bg-blue-100 text-blue-800' :
+                        role === UserRole.SUPER_USER ? 'bg-purple-100 text-purple-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {role.replace('_', ' ')}
+                      </span>
+                    ))}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -365,18 +374,18 @@ function UserManagement() {
               Change Role for {selectedUser.username}
             </h3>
             <div className="space-y-4">
-              {['HR_ADMIN', 'SUPERVISOR', 'EMPLOYEE'].map((role) => (
+              {Object.values(UserRole).map((role) => (
                 <button
                   key={role}
                   onClick={() => confirmRoleChange(role)}
-                  disabled={role === selectedUser.role || updateRoleMutation.isPending}
+                  disabled={selectedUser.roles.includes(role) || updateRoleMutation.isPending}
                   className={`w-full text-left px-4 py-2 rounded border ${
-                    role === selectedUser.role 
+                    selectedUser.roles.includes(role) 
                       ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       : 'bg-white hover:bg-gray-50 border-gray-300'
                   }`}
                 >
-                  {role.replace('_', ' ')} {role === selectedUser.role && '(Current)'}
+                  {role.replace('_', ' ')} {selectedUser.roles.includes(role) && '(Current)'}
                 </button>
               ))}
             </div>
@@ -401,19 +410,24 @@ function PermissionOverview() {
     queryFn: adminApi.listPermissions,
   });
 
+  const { data: superUserPermissions } = useQuery({
+    queryKey: ['admin', 'role-permissions', UserRole.SUPER_USER],
+    queryFn: () => adminApi.getRolePermissions(UserRole.SUPER_USER),
+  });
+
   const { data: hrPermissions } = useQuery({
-    queryKey: ['admin', 'role-permissions', 'HR_ADMIN'],
-    queryFn: () => adminApi.getRolePermissions('HR_ADMIN'),
+    queryKey: ['admin', 'role-permissions', UserRole.HR_ADMIN],
+    queryFn: () => adminApi.getRolePermissions(UserRole.HR_ADMIN),
   });
 
   const { data: supervisorPermissions } = useQuery({
-    queryKey: ['admin', 'role-permissions', 'SUPERVISOR'],
-    queryFn: () => adminApi.getRolePermissions('SUPERVISOR'),
+    queryKey: ['admin', 'role-permissions', UserRole.SUPERVISOR],
+    queryFn: () => adminApi.getRolePermissions(UserRole.SUPERVISOR),
   });
 
   const { data: employeePermissions } = useQuery({
-    queryKey: ['admin', 'role-permissions', 'EMPLOYEE'],
-    queryFn: () => adminApi.getRolePermissions('EMPLOYEE'),
+    queryKey: ['admin', 'role-permissions', UserRole.EMPLOYEE],
+    queryFn: () => adminApi.getRolePermissions(UserRole.EMPLOYEE),
   });
 
   if (isLoading) {
@@ -436,7 +450,7 @@ function PermissionOverview() {
               <div className="text-sm text-gray-500">Resource Types</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">3</div>
+              <div className="text-2xl font-bold text-purple-600">4</div>
               <div className="text-sm text-gray-500">User Roles</div>
             </div>
           </div>
@@ -446,11 +460,12 @@ function PermissionOverview() {
       {/* Role Permission Matrix */}
       <div className="bg-white shadow rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Role Permission Comparison</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {[
-            { role: 'HR_ADMIN', data: hrPermissions, color: 'red' },
-            { role: 'SUPERVISOR', data: supervisorPermissions, color: 'blue' },
-            { role: 'EMPLOYEE', data: employeePermissions, color: 'green' }
+            { role: UserRole.SUPER_USER, data: superUserPermissions, color: 'purple' },
+            { role: UserRole.HR_ADMIN, data: hrPermissions, color: 'red' },
+            { role: UserRole.SUPERVISOR, data: supervisorPermissions, color: 'blue' },
+            { role: UserRole.EMPLOYEE, data: employeePermissions, color: 'green' }
           ].map(({ role, data, color }) => (
             <div key={role} className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">

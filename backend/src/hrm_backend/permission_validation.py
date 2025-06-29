@@ -109,7 +109,7 @@ class PermissionValidator:
             return PermissionResult(
                 granted=False,
                 permission=permission,
-                user_role=user.role.value,
+                user_role=",".join(user.role_names),
                 context=PermissionContext.GLOBAL,
                 reason=f"Invalid permission format: {permission}",
                 resource_id=resource_id,
@@ -121,9 +121,9 @@ class PermissionValidator:
             return PermissionResult(
                 granted=False,
                 permission=permission,
-                user_role=user.role.value,
+                user_role=",".join(user.role_names),
                 context=PermissionContext.GLOBAL,
-                reason=f"User role {user.role.value} does not have permission {permission}",
+                reason=f"User roles {','.join(user.role_names)} do not have permission {permission}",
                 resource_id=resource_id,
                 debug_info=debug_info
             )
@@ -144,7 +144,7 @@ class PermissionValidator:
             return PermissionResult(
                 granted=True,
                 permission=permission,
-                user_role=user.role.value,
+                user_role=",".join(user.role_names),
                 context=PermissionContext.GLOBAL,
                 reason="Global permission granted",
                 resource_id=resource_id,
@@ -171,7 +171,7 @@ class PermissionValidator:
             return PermissionResult(
                 granted=True,
                 permission=permission,
-                user_role=user.role.value,
+                user_role=",".join(user.role_names),
                 context=PermissionContext.GLOBAL,
                 reason="Global access permission granted",
                 resource_id=resource_id,
@@ -183,7 +183,7 @@ class PermissionValidator:
             return PermissionResult(
                 granted=False,
                 permission=permission,
-                user_role=user.role.value,
+                user_role=",".join(user.role_names),
                 context=PermissionContext.RESOURCE_OWNERSHIP,
                 reason=f"Scoped permission {permission} requires resource_id for validation",
                 resource_id=resource_id,
@@ -198,7 +198,7 @@ class PermissionValidator:
             return PermissionResult(
                 granted=False,
                 permission=permission,
-                user_role=user.role.value,
+                user_role=",".join(user.role_names),
                 context=PermissionContext.GLOBAL,
                 reason=f"Unknown permission scope: {scope}",
                 resource_id=resource_id,
@@ -232,7 +232,7 @@ class PermissionValidator:
                 return PermissionResult(
                     granted=True,
                     permission=permission,
-                    user_role=user.role.value,
+                    user_role=",".join(user.role_names),
                     context=PermissionContext.RESOURCE_OWNERSHIP,
                     reason=f"User owns {resource_name} {resource_id}",
                     resource_id=resource_id,
@@ -242,7 +242,7 @@ class PermissionValidator:
                 return PermissionResult(
                     granted=False,
                     permission=permission,
-                    user_role=user.role.value,
+                    user_role=",".join(user.role_names),
                     context=PermissionContext.RESOURCE_OWNERSHIP,
                     reason=f"User does not own {resource_name} {resource_id}",
                     resource_id=resource_id,
@@ -255,7 +255,7 @@ class PermissionValidator:
             return PermissionResult(
                 granted=False,
                 permission=permission,
-                user_role=user.role.value,
+                user_role=",".join(user.role_names),
                 context=PermissionContext.RESOURCE_OWNERSHIP,
                 reason=f"Ownership validation error: {e}",
                 resource_id=resource_id,
@@ -293,7 +293,7 @@ class PermissionValidator:
                 return PermissionResult(
                     granted=True,
                     permission=permission,
-                    user_role=user.role.value,
+                    user_role=",".join(user.role_names),
                     context=PermissionContext.SUPERVISION,
                     reason=f"User supervises {resource_name} {resource_id}",
                     resource_id=resource_id,
@@ -303,7 +303,7 @@ class PermissionValidator:
                 return PermissionResult(
                     granted=False,
                     permission=permission,
-                    user_role=user.role.value,
+                    user_role=",".join(user.role_names),
                     context=PermissionContext.SUPERVISION,
                     reason=f"User does not supervise {resource_name} {resource_id}",
                     resource_id=resource_id,
@@ -316,7 +316,7 @@ class PermissionValidator:
             return PermissionResult(
                 granted=False,
                 permission=permission,
-                user_role=user.role.value,
+                user_role=",".join(user.role_names),
                 context=PermissionContext.SUPERVISION,
                 reason=f"Supervision validation error: {e}",
                 resource_id=resource_id,
@@ -364,7 +364,7 @@ class PermissionValidator:
         return PermissionResult(
             granted=False,
             permission=f"any_of_{permissions}",
-            user_role=user.role.value,
+            user_role=",".join(user.role_names),
             context=PermissionContext.GLOBAL,
             reason=f"User does not have any of the required permissions: {permissions}",
             resource_id=resource_id,
@@ -405,7 +405,7 @@ class PermissionValidator:
         return PermissionResult(
             granted=True,
             permission=f"all_of_{permissions}",
-            user_role=user.role.value,
+            user_role=",".join(user.role_names),
             context=PermissionContext.GLOBAL,
             reason=f"User has all required permissions: {permissions}",
             resource_id=resource_id,

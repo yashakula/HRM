@@ -1,6 +1,7 @@
 // Core types for the HRM frontend application
 
 export enum UserRole {
+  SUPER_USER = "SUPER_USER",
   HR_ADMIN = "HR_ADMIN",
   SUPERVISOR = "SUPERVISOR", 
   EMPLOYEE = "EMPLOYEE"
@@ -16,8 +17,8 @@ export interface User {
   user_id: number;
   username: string;
   email: string;
-  role: UserRole;
-  permissions?: string[]; // User's permissions based on their role
+  roles: UserRole[]; // User's active roles from multi-role system
+  permissions: string[]; // User's aggregated permissions from all roles
   is_active: boolean;
   created_at: string;
   employee?: Employee; // Associated employee if exists
@@ -33,7 +34,7 @@ export interface LoginResponse {
   user: {
     user_id: number;
     username: string;
-    role: string;
+    roles: UserRole[];
   };
 }
 
