@@ -7,12 +7,13 @@ from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
+from pydantic import BaseModel
 
 from ..database import get_db
 from ..auth import get_current_active_user
 from ..permission_decorators import require_permission
-from ..models import User, Employee, People, UserRole
-from ..schemas import UserResponse
+from ..models import User, Employee, People, UserRole, Role, UserRoleAssignment
+from ..schemas import UserResponse, RoleResponse, UserRoleAssignmentCreate, UserRoleAssignmentResponse, UserWithRolesResponse
 from ..permission_registry import ROLE_PERMISSIONS
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -35,7 +36,11 @@ async def list_all_users(
     
     # Filter by role if specified
     if role_filter:
-        query = query.filter(User.role == role_filter)
+        # Join with user_roles and roles table to filter by role name
+        query = query.join(UserRoleAssignment).join(Role).filter(
+            Role.name == role_filter.value,
+            UserRoleAssignment.is_active == True
+        )
     
     # Order by creation date (newest first) and apply pagination
     users = query.order_by(desc(User.created_at)).offset(skip).limit(limit).all()
@@ -43,7 +48,7 @@ async def list_all_users(
     # Add permissions to each user response
     result = []
     for user in users:
-        permissions = ROLE_PERMISSIONS.get(user.role.value, [])
+        permissions = user.get_all_permissions()
         # Get the user's employee record (if any)
         employee = user.employees[0] if user.employees else None
         
@@ -51,7 +56,7 @@ async def list_all_users(
             "user_id": user.user_id,
             "username": user.username,
             "email": user.email,
-            "role": user.role,
+            "roles": user.role_names,
             "permissions": permissions,
             "is_active": user.is_active,
             "created_at": user.created_at,
@@ -62,16 +67,20 @@ async def list_all_users(
     return result
 
 
+class RoleUpdateRequest(BaseModel):
+    new_role: UserRole
+
 @router.put("/users/{user_id}/role")
 @require_permission("user.manage")
 async def update_user_role(
     user_id: int,
-    new_role: UserRole,
+    request: RoleUpdateRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Update a user's role assignment.
+    Update a user's primary role assignment (for backward compatibility).
+    This replaces all current roles with a single new role.
     Available to users with user.manage permission.
     """
     # Get the target user
@@ -89,17 +98,47 @@ async def update_user_role(
             detail="Cannot modify your own role"
         )
     
-    # Update the role
-    old_role = target_user.role
-    target_user.role = new_role
+    # Get current roles for logging
+    current_roles = [assignment.role.name for assignment in target_user.user_roles if assignment.is_active]
+    
+    # Deactivate all current role assignments
+    for assignment in target_user.user_roles:
+        assignment.is_active = False
+    
+    # Get the new role
+    role = db.query(Role).filter(Role.name == request.new_role.value).first()
+    if not role:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Role '{request.new_role.value}' not found"
+        )
+    
+    # Check if user already has this role assignment (reactivate if exists)
+    existing_assignment = db.query(UserRoleAssignment).filter(
+        UserRoleAssignment.user_id == user_id,
+        UserRoleAssignment.role_id == role.role_id
+    ).first()
+    
+    if existing_assignment:
+        existing_assignment.is_active = True
+    else:
+        # Create new role assignment
+        new_assignment = UserRoleAssignment(
+            user_id=user_id,
+            role_id=role.role_id,
+            assigned_by=current_user.user_id,
+            is_active=True
+        )
+        db.add(new_assignment)
+    
     db.commit()
     db.refresh(target_user)
     
     return {
-        "message": f"User role updated from {old_role} to {new_role}",
+        "message": f"User role updated from {current_roles} to [{request.new_role.value}]",
         "user_id": user_id,
-        "old_role": old_role,
-        "new_role": new_role,
+        "old_roles": current_roles,
+        "new_role": request.new_role.value,
         "updated_by": current_user.username
     }
 
@@ -206,13 +245,18 @@ async def get_user_role_distribution(
     Get analytics on user role distribution.
     Available to users with user.manage permission.
     """
-    # Count users by role
+    # Count users by role (using the multi-role system)
     role_counts = db.query(
-        User.role,
-        func.count(User.user_id).label('count')
+        Role.name,
+        func.count(func.distinct(User.user_id)).label('count')
+    ).select_from(Role).join(
+        UserRoleAssignment, Role.role_id == UserRoleAssignment.role_id
+    ).join(
+        User, UserRoleAssignment.user_id == User.user_id
     ).filter(
-        User.is_active == True
-    ).group_by(User.role).all()
+        User.is_active == True,
+        UserRoleAssignment.is_active == True
+    ).group_by(Role.name).all()
     
     # Total active users
     total_users = db.query(func.count(User.user_id)).filter(User.is_active == True).scalar()
@@ -318,4 +362,210 @@ async def get_system_health(
             "avg_permissions_per_role": sum(len(perms) for perms in ROLE_PERMISSIONS.values()) / len(ROLE_PERMISSIONS)
         },
         "timestamp": datetime.utcnow()
+    }
+
+
+# Multi-Role RBAC Management Endpoints
+
+@router.get("/roles", response_model=List[RoleResponse])
+@require_permission("user.manage")
+async def list_all_roles(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get all available roles in the system"""
+    roles = db.query(Role).filter(Role.is_active == True).all()
+    return roles
+
+
+@router.get("/users/{user_id}/roles", response_model=UserWithRolesResponse)
+@require_permission("user.manage")
+async def get_user_roles(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get all role assignments for a specific user"""
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get role assignments with role details
+    role_assignments = []
+    for user_role in user.user_roles:
+        role_assignments.append(user_role)
+    
+    return {
+        "user_id": user.user_id,
+        "username": user.username,
+        "email": user.email,
+        "is_active": user.is_active,
+        "created_at": user.created_at,
+        "role_assignments": role_assignments,
+        "permissions": user.get_all_permissions(),
+        "employee": user.employees[0] if user.employees else None
+    }
+
+
+@router.post("/users/{user_id}/roles")
+@require_permission("user.manage")
+async def assign_user_role(
+    user_id: int,
+    role_assignment: UserRoleAssignmentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Assign a role to a user"""
+    # Check if user exists
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if role exists
+    role = db.query(Role).filter(Role.name == role_assignment.role_name).first()
+    if not role:
+        raise HTTPException(status_code=404, detail=f"Role '{role_assignment.role_name}' not found")
+    
+    # Check if user already has this role
+    existing_assignment = db.query(UserRoleAssignment).filter(
+        UserRoleAssignment.user_id == user_id,
+        UserRoleAssignment.role_id == role.role_id
+    ).first()
+    
+    if existing_assignment:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"User already has role '{role_assignment.role_name}'"
+        )
+    
+    # Create new role assignment
+    from datetime import date
+    new_assignment = UserRoleAssignment(
+        user_id=user_id,
+        role_id=role.role_id,
+        assigned_by=current_user.user_id,
+        effective_start_date=role_assignment.effective_start_date or date.today(),
+        effective_end_date=role_assignment.effective_end_date,
+        notes=role_assignment.notes
+    )
+    
+    db.add(new_assignment)
+    db.commit()
+    db.refresh(new_assignment)
+    
+    return {
+        "message": "Role assigned successfully",
+        "user_id": user_id,
+        "role_name": role_assignment.role_name,
+        "assigned_by": current_user.username,
+        "effective_start_date": new_assignment.effective_start_date,
+        "effective_end_date": new_assignment.effective_end_date
+    }
+
+
+@router.delete("/users/{user_id}/roles/{role_id}")
+@require_permission("user.manage")
+async def remove_user_role(
+    user_id: int,
+    role_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Remove a role from a user"""
+    # Find the role assignment
+    assignment = db.query(UserRoleAssignment).filter(
+        UserRoleAssignment.user_id == user_id,
+        UserRoleAssignment.role_id == role_id
+    ).first()
+    
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Role assignment not found")
+    
+    # Get role name for response
+    role = db.query(Role).filter(Role.role_id == role_id).first()
+    role_name = role.name if role else "Unknown"
+    
+    # Remove the assignment
+    db.delete(assignment)
+    db.commit()
+    
+    return {
+        "message": "Role removed successfully",
+        "user_id": user_id,
+        "role_name": role_name,
+        "removed_by": current_user.username
+    }
+
+
+@router.put("/users/{user_id}/roles/{role_id}/toggle")
+@require_permission("user.manage")
+async def toggle_user_role_status(
+    user_id: int,
+    role_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Toggle the active status of a user's role assignment"""
+    assignment = db.query(UserRoleAssignment).filter(
+        UserRoleAssignment.user_id == user_id,
+        UserRoleAssignment.role_id == role_id
+    ).first()
+    
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Role assignment not found")
+    
+    # Toggle the status
+    assignment.is_active = not assignment.is_active
+    db.commit()
+    
+    # Get role name for response
+    role = db.query(Role).filter(Role.role_id == role_id).first()
+    role_name = role.name if role else "Unknown"
+    
+    return {
+        "message": f"Role {'activated' if assignment.is_active else 'deactivated'} successfully",
+        "user_id": user_id,
+        "role_name": role_name,
+        "is_active": assignment.is_active,
+        "modified_by": current_user.username
+    }
+
+
+@router.get("/roles/{role_name}/users")
+@require_permission("user.manage")
+async def get_users_with_role(
+    role_name: str,
+    include_inactive: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get all users who have a specific role"""
+    # Check if role exists
+    role = db.query(Role).filter(Role.name == role_name).first()
+    if not role:
+        raise HTTPException(status_code=404, detail=f"Role '{role_name}' not found")
+    
+    # Build query
+    query = db.query(User).join(UserRoleAssignment).filter(
+        UserRoleAssignment.role_id == role.role_id
+    )
+    
+    if not include_inactive:
+        query = query.filter(UserRoleAssignment.is_active == True)
+    
+    users = query.all()
+    
+    return {
+        "role_name": role_name,
+        "total_users": len(users),
+        "users": [
+            {
+                "user_id": user.user_id,
+                "username": user.username,
+                "email": user.email,
+                "is_active": user.is_active,
+                "employee_name": user.employees[0].person.full_name if user.employees else None
+            }
+            for user in users
+        ]
     }
