@@ -1,8 +1,9 @@
 from sqlalchemy import Column, Integer, String, Date, DateTime, Enum, Text, ForeignKey, Numeric, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum as PyEnum
+from typing import List, Optional
 
 Base = declarative_base()
 
@@ -21,6 +22,7 @@ class PayType(PyEnum):
     CONTRACT = "CONTRACT"
 
 class UserRole(PyEnum):
+    SUPER_USER = "SUPER_USER"
     HR_ADMIN = "HR_ADMIN"
     SUPERVISOR = "SUPERVISOR" 
     EMPLOYEE = "EMPLOYEE"
@@ -33,23 +35,43 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
-    role = Column(Enum(UserRole), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     employees = relationship("Employee", back_populates="user")
+    user_roles = relationship("UserRoleAssignment", back_populates="user", cascade="all, delete-orphan", foreign_keys="[UserRoleAssignment.user_id]")
+    
+    @property
+    def active_roles(self) -> List['Role']:
+        """Get all active roles for the user"""
+        return [ur.role for ur in self.user_roles 
+                if ur.is_active and ur.is_effective()]
+    
+    @property
+    def role_names(self) -> List[str]:
+        """Get list of active role names"""
+        return [role.name for role in self.active_roles]
+    
+    def has_role(self, role_name: str) -> bool:
+        """Check if user has a specific role"""
+        return role_name in self.role_names
+    
+    def has_any_role(self, role_names: List[str]) -> bool:
+        """Check if user has any of the specified roles"""
+        return any(self.has_role(role) for role in role_names)
     
     def has_permission(self, permission_name: str) -> bool:
         """
-        Check if user has a specific permission based on their role.
-        Uses static role-permission mapping for efficient lookup.
+        Multi-role permission checking.
+        Returns True if user has permission through any of their active roles.
         """
-        from .permission_registry import ROLE_PERMISSIONS
+        # Check through all active roles
+        for role in self.active_roles:
+            if permission_name in role.permissions:
+                return True
         
-        role_name = self.role.value if hasattr(self.role, 'value') else str(self.role)
-        user_permissions = ROLE_PERMISSIONS.get(role_name, [])
-        return permission_name in user_permissions
+        return False
     
     def has_any_permission(self, permission_names: list) -> bool:
         """Check if user has any of the specified permissions"""
@@ -60,11 +82,66 @@ class User(Base):
         return all(self.has_permission(perm) for perm in permission_names)
     
     def get_all_permissions(self) -> list:
-        """Get all permissions for the user's current role"""
-        from .permission_registry import ROLE_PERMISSIONS
+        """Get aggregated permissions from all user's active roles"""
+        all_permissions = set()
         
-        role_name = self.role.value if hasattr(self.role, 'value') else str(self.role)
-        return ROLE_PERMISSIONS.get(role_name, [])
+        # Collect permissions from all active roles
+        for role in self.active_roles:
+            all_permissions.update(role.permissions)
+        
+        return list(all_permissions)
+
+class Role(Base):
+    __tablename__ = "roles"
+    
+    role_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False, index=True)
+    description = Column(Text)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user_roles = relationship("UserRoleAssignment", back_populates="role", cascade="all, delete-orphan")
+    
+    @property
+    def permissions(self) -> List[str]:
+        """Get permissions for this role from registry"""
+        from .permission_registry import ROLE_PERMISSIONS
+        return ROLE_PERMISSIONS.get(self.name, [])
+
+class UserRoleAssignment(Base):
+    __tablename__ = "user_roles"
+    
+    user_id = Column(Integer, ForeignKey("user.user_id"), primary_key=True)
+    role_id = Column(Integer, ForeignKey("roles.role_id"), primary_key=True)
+    assigned_at = Column(DateTime, default=datetime.utcnow)
+    assigned_by = Column(Integer, ForeignKey("user.user_id"), nullable=True)
+    is_active = Column(Boolean, default=True)
+    effective_start_date = Column(Date, default=date.today)
+    effective_end_date = Column(Date, nullable=True)
+    notes = Column(Text)
+    
+    # Relationships
+    user = relationship("User", back_populates="user_roles", foreign_keys=[user_id])
+    role = relationship("Role", back_populates="user_roles")
+    assigned_by_user = relationship("User", foreign_keys=[assigned_by], post_update=True)
+    
+    def is_effective(self, check_date: Optional[date] = None) -> bool:
+        """Check if role assignment is currently effective"""
+        if check_date is None:
+            check_date = date.today()
+        
+        if not self.is_active:
+            return False
+        
+        if self.effective_start_date and check_date < self.effective_start_date:
+            return False
+        
+        if self.effective_end_date and check_date > self.effective_end_date:
+            return False
+        
+        return True
 
 class People(Base):
     __tablename__ = "people"

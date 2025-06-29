@@ -67,8 +67,24 @@ PERMISSION_DEFINITIONS: List[Tuple[str, str, str, str, str]] = [
 
 # Role-Permission Mappings
 ROLE_PERMISSIONS: Dict[str, List[str]] = {
+    "SUPER_USER": [
+        # System administration and user management
+        "user.manage",
+        
+        # Employee management (create, read, search)
+        "employee.create",
+        "employee.read.all",
+        "employee.search",
+        
+        # Department management (full access)
+        "department.create",
+        "department.read",
+        "department.update",
+        "department.delete",
+    ],
+    
     "HR_ADMIN": [
-        # All employee permissions
+        # All employee permissions (except user management)
         "employee.create",
         "employee.read.all",
         "employee.update.all",
@@ -98,9 +114,6 @@ ROLE_PERMISSIONS: Dict[str, List[str]] = {
         "assignment_type.read",
         "assignment_type.update",
         "assignment_type.delete",
-        
-        # User management
-        "user.manage",
         
         # All attendance permissions
         "attendance.read.all",

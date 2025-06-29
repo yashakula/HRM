@@ -119,7 +119,7 @@ export default function ProtectedRoute({
             {accessState.permissions?.permissions.message || 'You do not have permission to access this page.'}
           </p>
           <div className="text-sm text-gray-500 mb-4">
-            <p>Your role: {user?.role}</p>
+            <p>Your roles: {user?.roles?.join(', ')}</p>
             {accessState.permissions?.permissions.required_permissions && (
               <p>Required permissions: {accessState.permissions.permissions.required_permissions.join(', ')}</p>
             )}

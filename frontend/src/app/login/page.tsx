@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import { useState, Suspense } from 'react';
@@ -5,6 +7,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 
 const DEMO_ACCOUNTS = [
+  {
+    username: 'super_user',
+    password: 'superuser123',
+    role: 'Super User',
+    description: 'System administrator - full access + user management'
+  },
   {
     username: 'hr_admin',
     password: 'admin123',
@@ -156,9 +164,6 @@ function LoginForm() {
                 >
                   <div className="font-medium text-gray-900">{account.role}</div>
                   <div className="text-sm text-gray-700">{account.description}</div>
-                  <div className="text-xs text-gray-600 mt-1">
-                    {account.username} / {account.password}
-                  </div>
                 </button>
               ))}
             </div>

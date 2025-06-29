@@ -21,7 +21,8 @@ interface AuthActions {
   hasAnyPermission: (permissions: string[]) => boolean;
   hasAllPermissions: (permissions: string[]) => boolean;
   refreshPermissions: () => Promise<void>;
-  getRolePermissions: (role: UserRole) => string[];
+  hasRole: (role: UserRole) => boolean;
+  hasAnyRole: (roles: UserRole[]) => boolean;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -44,8 +45,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       // Get full user details
       const user = await apiClient.getCurrentUser();
       
-      // Extract permissions from user object or set defaults based on role
-      const permissions = user.permissions || get().getRolePermissions(user.role);
+      // Extract permissions from user object (now required in multi-role system)
+      const permissions = user.permissions || [];
       
       set({ 
         user, 
@@ -90,8 +91,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       const user = await apiClient.getCurrentUser();
       
-      // Extract permissions from user object or set defaults based on role
-      const permissions = user.permissions || get().getRolePermissions(user.role);
+      // Extract permissions from user object (now required in multi-role system)
+      const permissions = user.permissions || [];
       
       set({ 
         user, 
@@ -137,7 +138,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       // Try to fetch updated user data with permissions
       const updatedUser = await apiClient.getCurrentUser();
-      const permissions = updatedUser.permissions || get().getRolePermissions(updatedUser.role);
+      const permissions = updatedUser.permissions || [];
       
       set({ 
         user: updatedUser, 
@@ -148,102 +149,50 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
-  // Helper function to get default permissions based on role
-  getRolePermissions: (role: UserRole): string[] => {
-    switch (role) {
-      case UserRole.HR_ADMIN:
-        return [
-          // Employee permissions
-          'employee.create',
-          'employee.read.all',
-          'employee.update.all',
-          'employee.delete',
-          // Assignment permissions
-          'assignment.create',
-          'assignment.read.all', 
-          'assignment.update.all',
-          'assignment.delete',
-          'assignment.manage_supervisors',
-          // Department permissions
-          'department.create',
-          'department.read.all',
-          'department.update',
-          'department.delete',
-          // Assignment type permissions
-          'assignment_type.create',
-          'assignment_type.read.all',
-          'assignment_type.update',
-          'assignment_type.delete',
-          // Leave request permissions
-          'leave_request.create.all',
-          'leave_request.read.all',
-          'leave_request.approve.all',
-          // System permissions
-          'system.manage_users',
-          'system.access_reports'
-        ];
-      case UserRole.SUPERVISOR:
-        return [
-          // Employee permissions (supervised scope)
-          'employee.read.supervised',
-          'employee.read.own',
-          // Assignment permissions (supervised scope)
-          'assignment.read.supervised',
-          'assignment.read.own',
-          // Department permissions (read only)
-          'department.read.all',
-          // Assignment type permissions (read only)
-          'assignment_type.read.all',
-          // Leave request permissions
-          'leave_request.create.own',
-          'leave_request.read.supervised',
-          'leave_request.read.own',
-          'leave_request.approve.supervised'
-        ];
-      case UserRole.EMPLOYEE:
-        return [
-          // Employee permissions (own only)
-          'employee.read.own',
-          // Assignment permissions (own only)
-          'assignment.read.own',
-          // Department permissions (read only)
-          'department.read.all',
-          // Assignment type permissions (read only)
-          'assignment_type.read.all',
-          // Leave request permissions
-          'leave_request.create.own',
-          'leave_request.read.own'
-        ];
-      default:
-        return [];
-    }
+  // Multi-role checking functions
+  hasRole: (role: UserRole): boolean => {
+    const { user } = get();
+    return user?.roles?.includes(role) || false;
+  },
+
+  hasAnyRole: (roles: UserRole[]): boolean => {
+    const { user } = get();
+    if (!user?.roles) return false;
+    return roles.some(role => user.roles.includes(role));
   },
 }));
 
-// Helper functions for role-based access (DEPRECATED - use permission-based functions)
-export const useUserRole = (): UserRole | null => {
+// Helper functions for multi-role access
+export const useUserRoles = (): UserRole[] => {
   const user = useAuthStore(state => state.user);
-  return user?.role || null;
+  return user?.roles || [];
 };
 
 export const useHasRole = (requiredRole: UserRole): boolean => {
-  const user = useAuthStore(state => state.user);
-  return user?.role === requiredRole;
+  const hasRole = useAuthStore(state => state.hasRole);
+  return hasRole(requiredRole);
 };
 
-// DEPRECATED: Use permission-based functions instead
+export const useHasAnyRole = (requiredRoles: UserRole[]): boolean => {
+  const hasAnyRole = useAuthStore(state => state.hasAnyRole);
+  return hasAnyRole(requiredRoles);
+};
+
+// Helper functions for specific role checks
 export const useIsHRAdmin = (): boolean => {
   return useHasRole(UserRole.HR_ADMIN);
 };
 
-// DEPRECATED: Use permission-based functions instead
 export const useIsSupervisor = (): boolean => {
   return useHasRole(UserRole.SUPERVISOR);
 };
 
-// DEPRECATED: Use permission-based functions instead
 export const useIsEmployee = (): boolean => {
   return useHasRole(UserRole.EMPLOYEE);
+};
+
+export const useIsSuperUser = (): boolean => {
+  return useHasRole(UserRole.SUPER_USER);
 };
 
 // NEW: Permission-based helper functions

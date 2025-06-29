@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -40,21 +40,13 @@ export default function ProfilePage() {
 
 function ProfileContent() {
   const { user } = useAuthStore();
-  const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch user's employee data
-  const { data: employee, isLoading, error } = useQuery({
-    queryKey: ['employee', 'profile', user?.employee?.employee_id],
-    queryFn: () => {
-      if (!user?.employee?.employee_id) {
-        throw new Error('No employee profile found');
-      }
-      return apiClient.getEmployee(user.employee.employee_id);
-    },
-    enabled: !!user?.employee?.employee_id,
-  });
+  // Use employee data directly from auth store (already loaded from /auth/me)
+  const employee = user?.employee;
+  const isLoading = false;
+  const error = null;
 
   const {
     register,
@@ -81,17 +73,16 @@ function ProfileContent() {
 
   const updateProfileMutation = useMutation({
     mutationFn: (data: EmployeeUpdateRequest) => {
-      if (!user?.employee?.employee_id) {
+      if (!employee?.employee_id) {
         throw new Error('No employee profile found');
       }
-      return apiClient.updateEmployee(user.employee.employee_id, data);
+      return apiClient.updateEmployee(employee.employee_id, data);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setIsSubmitting(false);
       setIsEditing(false);
-      // Invalidate related queries
-      queryClient.invalidateQueries({ queryKey: ['employee', 'profile'] });
-      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] }); // Refresh user data
+      // Refresh user data from auth store
+      await useAuthStore.getState().checkAuth();
     },
     onError: (error) => {
       setIsSubmitting(false);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
+import { UserRole } from '@/lib/types';
 import { apiClient } from '@/lib/api';
 import { PageAccessRequest, PageAccessResponse } from '@/lib/types';
 
@@ -288,10 +289,10 @@ export function useEnhancedRoleCheck() {
 
   return {
     // Basic role checks (client-side for UI performance)
-    isHRAdmin: user?.role === 'HR_ADMIN',
-    isSupervisor: user?.role === 'SUPERVISOR', 
-    isEmployee: user?.role === 'EMPLOYEE',
-    userRole: user?.role || null,
+    isHRAdmin: user?.roles?.includes(UserRole.HR_ADMIN) || false,
+    isSupervisor: user?.roles?.includes(UserRole.SUPERVISOR) || false, 
+    isEmployee: user?.roles?.includes(UserRole.EMPLOYEE) || false,
+    userRoles: user?.roles || [],
     isAuthenticated,
     isLoading,
 

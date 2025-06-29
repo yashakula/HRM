@@ -2,12 +2,14 @@
  * Admin API client for RBAC management functions
  */
 
+import { UserRole } from '@/lib/types';
+
 
 export interface AdminUser {
   user_id: number;
   username: string;
   email: string;
-  role: string;
+  roles: UserRole[];  // Changed from role: string to roles: UserRole[]
   permissions: string[];
   is_active: boolean;
   created_at: string;
