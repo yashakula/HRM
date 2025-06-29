@@ -221,6 +221,11 @@ class PermissionValidator:
             elif resource_name == "assignment":
                 owns_resource = check_assignment_ownership(user, resource_id, db)
                 debug_info["ownership_check"] = "assignment"
+            elif resource_name == "leave_request":
+                # For leave requests, resource_id is the employee_id that owns the leave request
+                # Check if the user owns the employee record
+                owns_resource = check_employee_ownership(user, resource_id, db)
+                debug_info["ownership_check"] = "leave_request_via_employee"
             else:
                 # For other resource types, implement as needed
                 owns_resource = False

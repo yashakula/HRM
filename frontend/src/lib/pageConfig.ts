@@ -99,13 +99,23 @@ export const PAGE_CONFIGS: Record<string, PageConfig> = {
   },
 
   '/leave-request': {
-    requiredPermissions: ['leave_request.create.own', 'leave_request.read.supervised', 'leave_request.read.all'],
-    title: 'Leave Requests',
+    requiredPermissions: ['leave_request.create.own', 'leave_request.read.own'],
+    title: 'My Leave Requests',
     showInNav: true,
     icon: '📅',
     navOrder: 8,
-    description: 'Submit and manage leave requests',
+    description: 'Submit and view my leave requests',
     requiredRoles: ['EMPLOYEE', 'SUPERVISOR', 'HR_ADMIN'] // Exclude SUPER_USER
+  },
+
+  '/approve-requests': {
+    requiredPermissions: ['leave_request.approve.supervised', 'leave_request.approve.all'],
+    title: 'Approve Requests',
+    showInNav: true,
+    icon: '✅',
+    navOrder: 9,
+    description: 'Review and approve leave requests from team members',
+    requiredRoles: ['SUPERVISOR', 'HR_ADMIN'] // Only supervisors and HR can approve
   },
 
   '/admin': {
@@ -113,7 +123,7 @@ export const PAGE_CONFIGS: Record<string, PageConfig> = {
     title: 'Admin Panel',
     showInNav: true,
     icon: '⚙️',
-    navOrder: 9,
+    navOrder: 10,
     description: 'System administration and user management'
   },
 

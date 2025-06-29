@@ -191,7 +191,7 @@ export interface PageAccessResponse {
 // Leave Request types
 export interface LeaveRequest {
   leave_id: number;
-  assignment_id: number;
+  employee_id: number;
   start_date: string;
   end_date: string;
   reason?: string;
@@ -199,12 +199,11 @@ export interface LeaveRequest {
   submitted_at: string;
   decision_at?: string;
   decided_by?: number;
-  assignment: Assignment;
+  employee: Employee;
   decision_maker?: Employee;
 }
 
 export interface LeaveRequestCreateRequest {
-  assignment_id: number;
   start_date: string;
   end_date: string;
   reason?: string;
@@ -213,4 +212,12 @@ export interface LeaveRequestCreateRequest {
 export interface LeaveRequestUpdateRequest {
   status: LeaveStatus;
   reason?: string;
+}
+
+export interface LeaveRequestApproveRequest {
+  reason?: string;
+}
+
+export interface LeaveRequestRejectRequest {
+  reason: string;
 }

@@ -186,6 +186,7 @@ class Employee(Base):
     person = relationship("People", back_populates="employees")
     user = relationship("User", back_populates="employees")
     assignments = relationship("Assignment", back_populates="employee")
+    leave_requests = relationship("LeaveRequest", foreign_keys="LeaveRequest.employee_id", back_populates="employee")
     leave_decisions = relationship("LeaveRequest", foreign_keys="LeaveRequest.decided_by", back_populates="decision_maker")
     supervised_assignments = relationship("Assignment", secondary="assignment_supervisor", back_populates="supervisors")
 
@@ -228,7 +229,6 @@ class Assignment(Base):
     # Relationships
     employee = relationship("Employee", back_populates="assignments")
     assignment_type = relationship("AssignmentType", back_populates="assignments")
-    leave_requests = relationship("LeaveRequest", back_populates="assignment")
     attendance_records = relationship("Attendance", back_populates="assignment")
     compensation_history = relationship("Compensation", back_populates="assignment")
     supervisors = relationship("Employee", secondary="assignment_supervisor", back_populates="supervised_assignments")
@@ -252,7 +252,7 @@ class LeaveRequest(Base):
     __tablename__ = "leave_request"
     
     leave_id = Column(Integer, primary_key=True, index=True)
-    assignment_id = Column(Integer, ForeignKey("assignment.assignment_id"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employee.employee_id"), nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     reason = Column(Text)
@@ -262,7 +262,7 @@ class LeaveRequest(Base):
     decided_by = Column(Integer, ForeignKey("employee.employee_id"))
     
     # Relationships
-    assignment = relationship("Assignment", back_populates="leave_requests")
+    employee = relationship("Employee", foreign_keys=[employee_id], back_populates="leave_requests")
     decision_maker = relationship("Employee", foreign_keys=[decided_by], back_populates="leave_decisions")
 
 class Attendance(Base):

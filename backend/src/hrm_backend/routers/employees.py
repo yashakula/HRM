@@ -169,6 +169,21 @@ def get_supervisees(
     
     return filtered_employees
 
+@router.get("/my-primary-supervisors", response_model=List[schemas.EmployeeResponse])
+def get_my_primary_supervisors(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get supervisors of current employee's primary assignment"""
+    # Get current employee record
+    employee = get_employee_by_user_id(db, current_user.user_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee record not found")
+    
+    # Get primary assignment supervisors
+    supervisors = crud.get_primary_assignment_supervisors(db, employee.employee_id)
+    return supervisors
+
 @router.get("/{employee_id}", response_model=schemas.EmployeeResponseUnion)
 async def read_employee(
     employee_id: int, 
@@ -191,7 +206,7 @@ async def read_employee(
             detail={
                 "error": "Access Denied",
                 "message": f"Insufficient permissions to access employee {employee_id}",
-                "user_role": current_user.role.value,
+                "user_role": current_user.role_names,
                 "required_permissions": ["employee.read.all", "employee.read.own", "employee.read.supervised"]
             }
         )
@@ -237,7 +252,7 @@ async def update_employee(
             detail={
                 "error": "Access Denied",
                 "message": f"Insufficient permissions to update employee {employee_id}",
-                "user_role": current_user.role.value,
+                "user_role": current_user.role_names,
                 "required_permissions": ["employee.update.all", "employee.update.own"]
             }
         )

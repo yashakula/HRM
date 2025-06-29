@@ -11,7 +11,6 @@ import {
 } from '@/store/authStore';
 
 interface LeaveRequestFormData {
-  assignment_id: string;
   start_date: string;
   end_date: string;
   reason: string;
@@ -27,7 +26,6 @@ export default function LeaveRequestPage() {
   const canViewAllLeaveRequests = useHasPermission('leave_request.read.all');
   
   const [formData, setFormData] = useState<LeaveRequestFormData>({
-    assignment_id: '',
     start_date: '',
     end_date: '',
     reason: ''
@@ -35,20 +33,19 @@ export default function LeaveRequestPage() {
   
   const [confirmationMessage, setConfirmationMessage] = useState<string>('');
 
-  // Get employee's active assignments for the dropdown
-  const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
-    queryKey: ['employee-active-assignments', user?.employee?.employee_id],
-    queryFn: () => {
-      if (!user?.employee?.employee_id) throw new Error('Employee ID not found');
-      return apiClient.getEmployeeActiveAssignments(user.employee.employee_id);
-    },
-    enabled: !!user?.employee?.employee_id,
-  });
+  // No longer need to fetch assignments for leave requests
 
   // Get employee's leave requests for display
   const { data: leaveRequests = [], isLoading: requestsLoading } = useQuery({
     queryKey: ['my-leave-requests'],
     queryFn: () => apiClient.getMyLeaveRequests(),
+    enabled: !!user,
+  });
+
+  // Get primary assignment supervisors
+  const { data: primarySupervisors = [], isLoading: supervisorsLoading } = useQuery({
+    queryKey: ['my-primary-supervisors'],
+    queryFn: () => apiClient.getPrimaryAssignmentSupervisors(),
     enabled: !!user,
   });
 
@@ -61,20 +58,18 @@ export default function LeaveRequestPage() {
       
       // Reset form
       setFormData({
-        assignment_id: '',
         start_date: '',
         end_date: '',
         reason: ''
       });
       
-      // Show confirmation message
-      const assignment = assignments.find(a => a.assignment_id === newRequest.assignment_id);
-      const assignmentName = assignment ? 
-        `${assignment.assignment_type.description} in ${assignment.assignment_type.department.name}` :
-        'Selected assignment';
+      // Show confirmation message with approver info
+      const approverNames = primarySupervisors.length > 0 
+        ? primarySupervisors.map(s => s.person.full_name).join(', ')
+        : 'your supervisor';
       
       setConfirmationMessage(
-        `Leave request submitted successfully for ${assignmentName} from ${newRequest.start_date} to ${newRequest.end_date}.`
+        `Leave request submitted successfully from ${newRequest.start_date} to ${newRequest.end_date}. Sent to ${approverNames} for approval.`
       );
       
       // Clear confirmation message after 5 seconds
@@ -88,7 +83,7 @@ export default function LeaveRequestPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.assignment_id || !formData.start_date || !formData.end_date) {
+    if (!formData.start_date || !formData.end_date) {
       alert('Please fill in all required fields');
       return;
     }
@@ -100,7 +95,6 @@ export default function LeaveRequestPage() {
     }
     
     const requestData: LeaveRequestCreateRequest = {
-      assignment_id: parseInt(formData.assignment_id),
       start_date: formData.start_date,
       end_date: formData.end_date,
       reason: formData.reason || undefined,
@@ -134,6 +128,33 @@ export default function LeaveRequestPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
+  const renderSupervisorInfo = () => {
+    if (supervisorsLoading) {
+      return <span className="text-sm text-gray-500">Loading supervisors...</span>;
+    }
+
+    if (primarySupervisors.length === 0) {
+      return <span className="text-sm text-red-500">No supervisor assigned to primary assignment</span>;
+    }
+
+    if (primarySupervisors.length === 1) {
+      return (
+        <span className="text-sm text-gray-600">
+          Approval required from: <span className="font-medium">{primarySupervisors[0].person.full_name}</span>
+        </span>
+      );
+    }
+
+    return (
+      <div className="text-sm text-gray-600">
+        <span>Approval required from: </span>
+        <span className="font-medium">
+          {primarySupervisors.map(supervisor => supervisor.person.full_name).join(', ')}
+        </span>
+      </div>
+    );
+  };
+
   if (!user || (!canCreateLeaveRequest && !canViewOwnLeaveRequests)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -150,7 +171,7 @@ export default function LeaveRequestPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Submit Leave Request</h1>
-          <p className="mt-2 text-gray-600">Request time off for your assignments</p>
+          <p className="mt-2 text-gray-600">Request time off from work</p>
         </div>
 
         {/* Confirmation Message */}
@@ -182,33 +203,32 @@ export default function LeaveRequestPage() {
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Assignment Selection */}
-              <div>
-                <label htmlFor="assignment_id" className="block text-sm font-medium text-gray-700 mb-2">
-                  Assignment *
-                </label>
-                <select
-                  id="assignment_id"
-                  name="assignment_id"
-                  value={formData.assignment_id}
-                  onChange={handleInputChange}
-                  required
-                  disabled={assignmentsLoading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                >
-                  <option value="">
-                    {assignmentsLoading ? 'Loading assignments...' : 'Select an assignment'}
-                  </option>
-                  {assignments.map((assignment) => (
-                    <option key={assignment.assignment_id} value={assignment.assignment_id}>
-                      {assignment.assignment_type.description} - {assignment.assignment_type.department.name}
-                      {assignment.is_primary && ' (Primary)'}
-                    </option>
-                  ))}
-                </select>
-                {assignments.length === 0 && !assignmentsLoading && (
-                  <p className="mt-1 text-sm text-red-600">No active assignments found. Please contact HR.</p>
-                )}
+
+              {/* Approver Information */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800">Request Approval Process</h3>
+                    <div className="mt-1 text-sm text-blue-700">
+                      {supervisorsLoading ? (
+                        <span>Loading approval information...</span>
+                      ) : primarySupervisors.length === 0 ? (
+                        <span className="text-red-600">⚠️ No supervisor assigned - request may not be approved</span>
+                      ) : (
+                        <span>
+                          Your request will be sent to <span className="font-semibold">
+                            {primarySupervisors.map(supervisor => supervisor.person.full_name).join(', ')}
+                          </span> for approval.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Date Range */}
@@ -266,7 +286,7 @@ export default function LeaveRequestPage() {
               <div>
                 <button
                   type="submit"
-                  disabled={createMutation.isPending || assignments.length === 0}
+                  disabled={createMutation.isPending}
                   className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {createMutation.isPending ? 'Submitting...' : 'Submit Leave Request'}
@@ -287,6 +307,9 @@ export default function LeaveRequestPage() {
             <div className="bg-white shadow-sm rounded-lg">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-900">Your Leave Requests</h2>
+              <div className="mt-2">
+                {renderSupervisorInfo()}
+              </div>
             </div>
             
             <div className="p-6">
@@ -307,7 +330,7 @@ export default function LeaveRequestPage() {
                               {request.status}
                             </span>
                             <span className="text-sm text-gray-500">
-                              {request.assignment.assignment_type.description}
+                              Employee: {request.employee.person.full_name}
                             </span>
                           </div>
                           
@@ -323,6 +346,37 @@ export default function LeaveRequestPage() {
                             Submitted: {formatDate(request.submitted_at)}
                             {request.decision_at && ` • Decided: ${formatDate(request.decision_at)}`}
                           </p>
+                          
+                          {request.status === LeaveStatus.PENDING && (
+                            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                              {primarySupervisors.length > 0 ? (
+                                <p className="text-xs text-yellow-800">
+                                  <span className="font-medium">⏳ Pending Approval:</span> Waiting for approval from{' '}
+                                  <span className="font-semibold">{primarySupervisors.map(s => s.person.full_name).join(', ')}</span>
+                                </p>
+                              ) : (
+                                <p className="text-xs text-red-600">
+                                  <span className="font-medium">⚠️ No Approver:</span> No supervisor assigned to approve this request
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          {request.status === LeaveStatus.APPROVED && request.decision_maker && (
+                            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                              <p className="text-xs text-green-800">
+                                <span className="font-medium">✅ Approved by:</span> {request.decision_maker.person.full_name}
+                              </p>
+                            </div>
+                          )}
+
+                          {request.status === LeaveStatus.REJECTED && request.decision_maker && (
+                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                              <p className="text-xs text-red-800">
+                                <span className="font-medium">❌ Rejected by:</span> {request.decision_maker.person.full_name}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

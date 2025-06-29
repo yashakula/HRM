@@ -369,7 +369,6 @@ class SupervisorAssignmentResponse(BaseModel):
 
 # Leave Request schemas
 class LeaveRequestCreate(BaseModel):
-    assignment_id: int
     start_date: date
     end_date: date
     reason: Optional[str] = None
@@ -378,9 +377,15 @@ class LeaveRequestUpdate(BaseModel):
     status: LeaveStatus
     reason: Optional[str] = None  # Allow supervisor to add notes
 
+class LeaveRequestApprove(BaseModel):
+    reason: Optional[str] = None  # Optional approval comment
+
+class LeaveRequestReject(BaseModel):
+    reason: str  # Required rejection reason
+
 class LeaveRequestResponse(BaseModel):
     leave_id: int
-    assignment_id: int
+    employee_id: int
     start_date: date
     end_date: date
     reason: Optional[str]
@@ -388,7 +393,7 @@ class LeaveRequestResponse(BaseModel):
     submitted_at: datetime
     decision_at: Optional[datetime]
     decided_by: Optional[int]
-    assignment: "AssignmentResponse"
+    employee: "EmployeeResponse"
     decision_maker: Optional["EmployeeResponse"] = None
 
     class Config:

@@ -128,14 +128,18 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
 
 # Response filtering utility functions
 def get_employee_by_user_id(db: Session, user_id: int) -> Optional[Employee]:
-    """Query employee table by user relationship"""
+    """Query employee table by user relationship - returns most recent active employee record"""
+    from .models import EmployeeStatus
     return db.query(Employee).options(
         joinedload(Employee.person).joinedload(People.personal_information)
-    ).filter(Employee.user_id == user_id).first()
+    ).filter(
+        Employee.user_id == user_id,
+        Employee.status == EmployeeStatus.ACTIVE
+    ).order_by(Employee.created_at.desc()).first()
 
 def check_employee_ownership(current_user: User, employee_id: int, db: Session) -> bool:
     """Check if current user owns the employee record"""
-    if current_user.role == UserRole.HR_ADMIN:
+    if current_user.has_role("HR_ADMIN"):
         return True  # HR_ADMIN can access any record
     
     user_employee = get_employee_by_user_id(db, current_user.user_id)
@@ -146,7 +150,7 @@ def check_employee_ownership(current_user: User, employee_id: int, db: Session) 
 
 def check_supervisor_relationship(current_user: User, employee_id: int, db: Session) -> bool:
     """Check if supervisor has authority over the specified employee"""
-    if current_user.role != UserRole.SUPERVISOR:
+    if not current_user.has_role("SUPERVISOR"):
         return False
     
     # Get supervisor's employee record

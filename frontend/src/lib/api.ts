@@ -13,7 +13,8 @@ import {
   LeaveRequest,
   LeaveRequestCreateRequest,
   LeaveRequestUpdateRequest,
-  Assignment,
+  LeaveRequestApproveRequest,
+  LeaveRequestRejectRequest,
   ApiError 
 } from './types';
 
@@ -195,9 +196,25 @@ class ApiClient {
     });
   }
 
-  async getEmployeeActiveAssignments(employeeId: number): Promise<Assignment[]> {
-    return this.request<Assignment[]>(`/api/v1/leave-requests/assignments/${employeeId}/active`);
+  async approveLeaveRequest(id: number, approval: LeaveRequestApproveRequest): Promise<LeaveRequest> {
+    return this.request<LeaveRequest>(`/api/v1/leave-requests/${id}/approve`, {
+      method: 'PUT',
+      body: JSON.stringify(approval),
+    });
   }
+
+  async rejectLeaveRequest(id: number, rejection: LeaveRequestRejectRequest): Promise<LeaveRequest> {
+    return this.request<LeaveRequest>(`/api/v1/leave-requests/${id}/reject`, {
+      method: 'PUT',
+      body: JSON.stringify(rejection),
+    });
+  }
+
+  // Get primary assignment supervisors for current employee
+  async getPrimaryAssignmentSupervisors(): Promise<Employee[]> {
+    return this.request<Employee[]>('/api/v1/employees/my-primary-supervisors');
+  }
+
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);

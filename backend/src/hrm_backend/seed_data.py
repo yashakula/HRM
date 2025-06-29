@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from . import models, crud, schemas
 from .auth import get_password_hash
 import logging
+from datetime import datetime, date, timedelta
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +170,76 @@ SEED_ASSIGNMENTS = [
     {"employee_name": "Charlie Brown", "assignment_type": "Marketing Manager", "department_name": "Marketing", "start_date": "2019-06-10"},
     {"employee_name": "Diana Wilson", "assignment_type": "HR Specialist", "department_name": "Human Resources", "supervisor_name": "Charlie Brown", "start_date": "2022-08-15"},
     {"employee_name": "Edward Davis", "assignment_type": "Financial Analyst", "department_name": "Finance", "start_date": "2018-02-20", "end_date": "2023-12-31"},
+]
+
+# Standard seed leave requests
+SEED_LEAVE_REQUESTS = [
+    {
+        "employee_name": "Alice Johnson",
+        "start_date": "2024-07-15",
+        "end_date": "2024-07-19",
+        "reason": "Annual vacation to visit family",
+        "status": "APPROVED",
+        "submitted_days_ago": 45,
+        "decided_days_ago": 42,
+        "decided_by_name": "Bob Smith"
+    },
+    {
+        "employee_name": "Alice Johnson",
+        "start_date": "2024-08-20",
+        "end_date": "2024-08-22",
+        "reason": "Personal matters",
+        "status": "PENDING",
+        "submitted_days_ago": 15
+    },
+    {
+        "employee_name": "Diana Wilson",
+        "start_date": "2024-07-08",
+        "end_date": "2024-07-12",
+        "reason": "Medical appointment and recovery",
+        "status": "APPROVED",
+        "submitted_days_ago": 50,
+        "decided_days_ago": 48,
+        "decided_by_name": "Charlie Brown"
+    },
+    {
+        "employee_name": "Diana Wilson",
+        "start_date": "2024-09-02",
+        "end_date": "2024-09-06",
+        "reason": "Wedding celebration",
+        "status": "PENDING",
+        "submitted_days_ago": 5
+    },
+    {
+        "employee_name": "Bob Smith",
+        "start_date": "2024-06-10",
+        "end_date": "2024-06-14",
+        "reason": "Conference attendance",
+        "status": "APPROVED",
+        "submitted_days_ago": 80,
+        "decided_days_ago": 78,
+        "decided_by_name": "Charlie Brown"
+    },
+    {
+        "employee_name": "Charlie Brown",
+        "start_date": "2024-05-20",
+        "end_date": "2024-05-24",
+        "reason": "Team building retreat",
+        "status": "REJECTED",
+        "submitted_days_ago": 100,
+        "decided_days_ago": 95,
+        "decided_by_name": "System Administrator"
+    },
+    {
+        "employee_name": "Edward Davis",
+        "start_date": "2023-12-18",
+        "end_date": "2023-12-29",
+        "reason": "Holiday vacation",
+        "status": "APPROVED",
+        "submitted_days_ago": 250,
+        "decided_days_ago": 248,
+        "decided_by_name": "System Administrator"
+    }
 ]
 
 def user_exists(db: Session, username: str) -> bool:
@@ -417,6 +489,82 @@ def create_seed_assignments(db: Session) -> list:
     
     return created_assignments
 
+def create_seed_leave_requests(db: Session) -> list:
+    """Create seed leave requests if they don't exist"""
+    created_leave_requests = []
+    
+    for lr_data in SEED_LEAVE_REQUESTS:
+        # Get employee by name
+        employee = db.query(models.Employee).join(models.People).filter(
+            models.People.full_name == lr_data["employee_name"]
+        ).first()
+        
+        if not employee:
+            logger.error(f"Employee not found for leave request: {lr_data['employee_name']}")
+            continue
+        
+        # Check if similar leave request already exists (same employee, dates, and reason)
+        existing_request = db.query(models.LeaveRequest).filter(
+            models.LeaveRequest.employee_id == employee.employee_id,
+            models.LeaveRequest.start_date == lr_data["start_date"],
+            models.LeaveRequest.end_date == lr_data["end_date"],
+            models.LeaveRequest.reason == lr_data["reason"]
+        ).first()
+        
+        if existing_request:
+            logger.info(f"Leave request already exists: {lr_data['employee_name']} ({lr_data['start_date']} to {lr_data['end_date']})")
+            created_leave_requests.append(existing_request)
+            continue
+        
+        # Calculate dates based on days ago
+        submitted_at = datetime.utcnow() - timedelta(days=lr_data["submitted_days_ago"])
+        decision_at = None
+        decided_by = None
+        
+        if lr_data["status"] in ["APPROVED", "REJECTED"] and lr_data.get("decided_days_ago"):
+            decision_at = datetime.utcnow() - timedelta(days=lr_data["decided_days_ago"])
+            
+            # Get decision maker by name
+            if lr_data.get("decided_by_name"):
+                decision_maker = db.query(models.Employee).join(models.People).filter(
+                    models.People.full_name == lr_data["decided_by_name"]
+                ).first()
+                if decision_maker:
+                    decided_by = decision_maker.employee_id
+                else:
+                    logger.warning(f"Decision maker not found: {lr_data['decided_by_name']}")
+        
+        # Convert status string to enum
+        try:
+            status = models.LeaveStatus[lr_data["status"]]
+        except KeyError:
+            logger.error(f"Invalid leave status: {lr_data['status']}")
+            continue
+        
+        # Create leave request directly (bypass API for seeding)
+        db_leave_request = models.LeaveRequest(
+            employee_id=employee.employee_id,
+            start_date=lr_data["start_date"],
+            end_date=lr_data["end_date"],
+            reason=lr_data["reason"],
+            status=status,
+            submitted_at=submitted_at,
+            decision_at=decision_at,
+            decided_by=decided_by
+        )
+        
+        try:
+            db.add(db_leave_request)
+            db.commit()
+            db.refresh(db_leave_request)
+            created_leave_requests.append(db_leave_request)
+            logger.info(f"Created leave request: {lr_data['employee_name']} ({lr_data['start_date']} to {lr_data['end_date']}) - {lr_data['status']}")
+        except Exception as e:
+            logger.error(f"Error creating leave request for {lr_data['employee_name']}: {str(e)}")
+            db.rollback()
+    
+    return created_leave_requests
+
 def create_all_seed_data(db: Session) -> dict:
     """Create all seed data (users, employees, departments, assignment types, assignments)"""
     logger.info("Starting seed data creation...")
@@ -437,14 +585,18 @@ def create_all_seed_data(db: Session) -> dict:
         # Create seed assignments (depends on employees and assignment types)
         assignments = create_seed_assignments(db)
         
+        # Create seed leave requests (depends on employees)
+        leave_requests = create_seed_leave_requests(db)
+        
         result = {
             "users": users,
             "departments": departments,
             "assignment_types": assignment_types,
             "employees": employees,
             "assignments": assignments,
+            "leave_requests": leave_requests,
             "success": True,
-            "message": f"Seed data created: {len(users)} users, {len(departments)} departments, {len(assignment_types)} assignment types, {len(employees)} employees, {len(assignments)} assignments"
+            "message": f"Seed data created: {len(users)} users, {len(departments)} departments, {len(assignment_types)} assignment types, {len(employees)} employees, {len(assignments)} assignments, {len(leave_requests)} leave requests"
         }
         
         logger.info(result["message"])
@@ -459,6 +611,7 @@ def create_all_seed_data(db: Session) -> dict:
             "assignment_types": [],
             "employees": [],
             "assignments": [],
+            "leave_requests": [],
             "success": False,
             "error": str(e)
         }
@@ -470,7 +623,21 @@ def reset_seed_data(db: Session) -> dict:
     try:
         # Delete in reverse dependency order to handle foreign keys
         
-        # 1. Delete assignments first (depends on employees and assignment types)
+        # 1. Delete leave requests first (depends on employees)
+        for lr_data in SEED_LEAVE_REQUESTS:
+            employee = db.query(models.Employee).join(models.People).filter(
+                models.People.full_name == lr_data["employee_name"]
+            ).first()
+            if employee:
+                # Delete leave requests for this employee
+                db.query(models.LeaveRequest).filter(
+                    models.LeaveRequest.employee_id == employee.employee_id,
+                    models.LeaveRequest.start_date == lr_data["start_date"],
+                    models.LeaveRequest.end_date == lr_data["end_date"],
+                    models.LeaveRequest.reason == lr_data["reason"]
+                ).delete()
+        
+        # 2. Delete assignments (depends on employees and assignment types)
         for assignment_data in SEED_ASSIGNMENTS:
             employee = db.query(models.Employee).join(models.People).filter(
                 models.People.full_name == assignment_data["employee_name"]
@@ -481,7 +648,7 @@ def reset_seed_data(db: Session) -> dict:
                     models.Assignment.employee_id == employee.employee_id
                 ).delete()
         
-        # 2. Delete assignment supervisor relationships
+        # 3. Delete assignment supervisor relationships
         for assignment_data in SEED_ASSIGNMENTS:
             employee = db.query(models.Employee).join(models.People).filter(
                 models.People.full_name == assignment_data["employee_name"]
@@ -490,7 +657,7 @@ def reset_seed_data(db: Session) -> dict:
                 # This is handled by cascade delete from assignments
                 pass
         
-        # 3. Delete assignment types
+        # 4. Delete assignment types
         for at_data in SEED_ASSIGNMENT_TYPES:
             department = db.query(models.Department).filter(
                 models.Department.name == at_data["department_name"]
@@ -501,13 +668,13 @@ def reset_seed_data(db: Session) -> dict:
                     models.AssignmentType.department_id == department.department_id
                 ).delete()
         
-        # 4. Delete departments
+        # 5. Delete departments
         for dept_data in SEED_DEPARTMENTS:
             db.query(models.Department).filter(
                 models.Department.name == dept_data["name"]
             ).delete()
         
-        # 5. Delete employees (and their personal information via cascade)
+        # 6. Delete employees (and their personal information via cascade)
         for emp_data in SEED_EMPLOYEES:
             employee = db.query(models.Employee).join(models.People).filter(
                 models.People.full_name == emp_data["person"]["full_name"]
@@ -519,7 +686,7 @@ def reset_seed_data(db: Session) -> dict:
                 # Delete people record (will cascade to employee)
                 db.delete(employee.person)
         
-        # 6. Delete users last
+        # 7. Delete users last
         for user_data in SEED_USERS:
             db.query(models.User).filter(
                 models.User.username == user_data["username"]
