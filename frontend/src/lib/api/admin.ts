@@ -69,9 +69,12 @@ export interface SystemHealth {
   timestamp: string;
 }
 
+// API base URL configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 // Helper function for API requests
 async function adminRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`http://localhost:8000${endpoint}`, {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     ...options,

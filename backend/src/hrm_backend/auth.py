@@ -62,10 +62,12 @@ def get_cookie_config() -> dict:
     if COOKIE_DOMAIN:
         config["domain"] = COOKIE_DOMAIN
     
-    # In tunnel mode, ensure secure and samesite=none for cross-origin
+    # In tunnel mode, ensure secure cookies but respect samesite from environment
     if TUNNEL_MODE:
         config["secure"] = True
-        config["samesite"] = "none"
+        # Only override samesite if not explicitly set in environment
+        if not COOKIE_SAMESITE or COOKIE_SAMESITE.lower() == "none":
+            config["samesite"] = "none"
     
     return config
 
