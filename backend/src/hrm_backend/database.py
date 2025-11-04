@@ -6,10 +6,24 @@ import os
 # Database configuration
 def get_database_url():
     """Get database URL from environment or default"""
-    return os.getenv(
-        "DATABASE_URL", 
-        "postgresql://postgres:mysecretpassword@localhost:5432/hrms"
-    )
+    # Try to get from environment first
+    db_url = os.getenv("DATABASE_URL")
+
+    # If not set, use system user for native PostgreSQL
+    if not db_url:
+        import getpass
+        username = getpass.getuser()
+        db_url = f"postgresql://{username}@localhost:5432/hrms"
+
+    # Expand environment variables in the URL (e.g., ${USER})
+    import re
+    def expand_env_var(match):
+        env_var = match.group(1)
+        return os.getenv(env_var, match.group(0))
+
+    db_url = re.sub(r'\$\{(\w+)\}', expand_env_var, db_url)
+
+    return db_url
 
 DATABASE_URL = get_database_url()
 

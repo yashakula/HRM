@@ -7,7 +7,7 @@ A modern HRM system built with Next.js (frontend with Bun) and FastAPI (backend)
 ### Prerequisites
 - [Bun](https://bun.sh) v1.0+ installed
 - [Python](https://python.org) 3.11+ with [uv](https://github.com/astral-sh/uv) installed
-- [Docker](https://docker.com) (for PostgreSQL database only)
+- [PostgreSQL](https://www.postgresql.org/) 15+ installed (via Homebrew recommended)
 
 ### Starting the Application
 
@@ -17,11 +17,12 @@ A modern HRM system built with Next.js (frontend with Bun) and FastAPI (backend)
 ```
 
 The startup script automatically:
-1. ✅ Checks if PostgreSQL is running, starts it if needed
-2. ✅ Seeds the database with permissions and role mappings
-3. ✅ Starts the backend API server (FastAPI with hot reload on port 8000)
-4. ✅ Installs frontend dependencies if needed
-5. ✅ Starts the frontend dev server (Bun + Next.js with Turbopack on port 3000)
+1. ✅ Checks if PostgreSQL service is running, starts it if needed
+2. ✅ Creates the `hrms` database if it doesn't exist
+3. ✅ Seeds roles and permissions (idempotent - won't duplicate data)
+4. ✅ Starts the backend API server (FastAPI with hot reload on port 8000)
+5. ✅ Installs frontend dependencies if needed
+6. ✅ Starts the frontend dev server (Bun + Next.js with Turbopack on port 3000)
 
 **You'll see output like this:**
 ```
@@ -83,18 +84,17 @@ Log in with any of these pre-configured accounts:
 This will:
 - Stop the frontend dev server (port 3000)
 - Stop the backend API server (port 8000)
-- Keep PostgreSQL container running (for faster restarts)
+- Keep PostgreSQL service running (for faster restarts)
 
 **To also stop PostgreSQL:**
 ```bash
-docker stop hrm-postgres
+brew services stop postgresql@15
 ```
 
-**To completely remove the database:**
+**To access the database directly:**
 ```bash
-docker stop hrm-postgres && docker rm hrm-postgres
+psql hrms
 ```
-> ⚠️ **Warning**: This will delete all data in the database. You'll need to reseed when you restart.
 
 ### Troubleshooting
 
@@ -110,21 +110,33 @@ lsof -i :8000
 
 **PostgreSQL won't start:**
 ```bash
-# Check if container exists
-docker ps -a | grep hrm-postgres
+# Check PostgreSQL service status
+brew services list | grep postgresql
 
-# Remove old container and start fresh
-docker rm hrm-postgres
-./start.sh
+# Restart PostgreSQL
+brew services restart postgresql@15
+
+# Check PostgreSQL logs
+tail -f /opt/homebrew/var/log/postgresql@15.log
 ```
 
 **Database connection errors:**
 ```bash
-# Check if PostgreSQL is healthy
-docker logs hrm-postgres
+# Check if database exists
+psql -l | grep hrms
 
-# Restart PostgreSQL
-docker restart hrm-postgres
+# Recreate database if needed
+dropdb hrms && createdb hrms
+./start.sh
+```
+
+**PostgreSQL not installed:**
+```bash
+# Install via Homebrew
+brew install postgresql@15
+
+# Start service
+brew services start postgresql@15
 ```
 
 ## 📁 Project Structure
@@ -168,25 +180,42 @@ uv run pytest
 
 ## 🗄 Database
 
-The application uses PostgreSQL 15 running in Docker.
+The application uses PostgreSQL 15 installed natively via Homebrew.
 
 **Connection Details:**
 - Host: localhost
 - Port: 5432
 - Database: hrms
-- Username: postgres
-- Password: mysecretpassword
+- Username: (your system username)
+- Password: (none by default)
+
+**Database location:** `/opt/homebrew/var/postgresql@15/`
 
 To connect directly:
 ```bash
-docker exec -it hrm-postgres psql -U postgres -d hrms
+psql hrms
+```
+
+**Useful commands:**
+```bash
+# List all databases
+psql -l
+
+# Backup database
+pg_dump hrms > backup.sql
+
+# Restore database
+psql hrms < backup.sql
+
+# View database size
+psql hrms -c "SELECT pg_size_pretty(pg_database_size('hrms'));"
 ```
 
 ## 📝 Environment Variables
 
 ### Backend (`.env`)
 ```
-DATABASE_URL=postgresql://postgres:mysecretpassword@localhost:5432/hrms
+DATABASE_URL=postgresql://localhost:5432/hrms
 CREATE_SEED_DATA=true
 DEBUG=true
 BACKEND_CORS_ORIGINS=http://localhost:3000
@@ -246,7 +275,14 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ## 🚧 Development Notes
 
-This is an active development project. The Docker containerization has been removed for faster local development. Use the provided `start.sh` script for easy setup.
+This is an active development project using native PostgreSQL for faster local development. The startup script handles all database initialization automatically.
+
+**Why native PostgreSQL?**
+- ✅ Faster than Docker (no container overhead)
+- ✅ Easier database management (native tools)
+- ✅ Persistent data by default
+- ✅ Better performance for local dev
+- ✅ No Docker daemon required
 
 ## 📄 License
 

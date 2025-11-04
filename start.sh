@@ -13,35 +13,43 @@ NC='\033[0m' # No Color
 
 # Check if PostgreSQL is running
 echo -e "${BLUE}[1/5] Checking PostgreSQL...${NC}"
-if ! docker ps | grep -q hrm-postgres; then
-    echo "Starting PostgreSQL container..."
-    docker run --name hrm-postgres \
-        -e POSTGRES_PASSWORD=mysecretpassword \
-        -e POSTGRES_DB=hrms \
-        -p 5432:5432 \
-        -d postgres:15 2>/dev/null || docker start hrm-postgres
+if ! brew services list | grep postgresql@15 | grep -q started; then
+    echo "Starting PostgreSQL service..."
+    brew services start postgresql@15
     echo "Waiting for PostgreSQL to be ready..."
-    sleep 5
+    sleep 3
 else
     echo "PostgreSQL is already running"
+fi
+
+# Verify database exists
+if ! /opt/homebrew/opt/postgresql@15/bin/psql -lqt | cut -d \| -f 1 | grep -qw hrms; then
+    echo "Creating hrms database..."
+    /opt/homebrew/opt/postgresql@15/bin/createdb hrms
 fi
 echo -e "${GREEN}✓ PostgreSQL ready${NC}"
 echo ""
 
-# Seed roles and permissions
-echo -e "${BLUE}[2/6] Seeding roles...${NC}"
+# Create database tables
+echo -e "${BLUE}[2/7] Creating database tables...${NC}"
 cd backend
+uv run python -c "from hrm_backend.database import create_tables; create_tables()"
+echo -e "${GREEN}✓ Tables created${NC}"
+echo ""
+
+# Seed roles and permissions
+echo -e "${BLUE}[3/7] Seeding roles...${NC}"
 uv run python scripts/seed_roles.py
 echo -e "${GREEN}✓ Roles seeded${NC}"
 echo ""
 
-echo -e "${BLUE}[3/6] Seeding permissions...${NC}"
+echo -e "${BLUE}[4/7] Seeding permissions...${NC}"
 uv run python scripts/seed_permissions.py
 echo -e "${GREEN}✓ Permissions seeded${NC}"
 echo ""
 
 # Start backend
-echo -e "${BLUE}[4/6] Starting backend server...${NC}"
+echo -e "${BLUE}[5/7] Starting backend server...${NC}"
 uv run uvicorn hrm_backend.main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 echo "Backend PID: $BACKEND_PID"
@@ -51,7 +59,7 @@ echo -e "${GREEN}✓ Backend started on http://localhost:8000${NC}"
 echo ""
 
 # Install frontend dependencies and start
-echo -e "${BLUE}[5/6] Installing frontend dependencies...${NC}"
+echo -e "${BLUE}[6/7] Installing frontend dependencies...${NC}"
 cd frontend
 if [ ! -d "node_modules" ]; then
     bun install
@@ -60,7 +68,7 @@ echo -e "${GREEN}✓ Dependencies installed${NC}"
 echo ""
 
 # Start frontend
-echo -e "${BLUE}[6/6] Starting frontend server...${NC}"
+echo -e "${BLUE}[7/7] Starting frontend server...${NC}"
 bun dev &
 FRONTEND_PID=$!
 echo "Frontend PID: $FRONTEND_PID"

@@ -4,6 +4,7 @@ Creates consistent test data for development and testing.
 """
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from . import models, crud, schemas
 from .auth import get_password_hash
 import logging
@@ -294,7 +295,7 @@ def create_seed_users(db: Session) -> dict:
                     role_id=role.role_id,
                     assigned_by=None,  # System assignment
                     is_active=True,
-                    effective_start_date=db.query(models.func.current_date()).scalar(),
+                    effective_start_date=db.query(func.current_date()).scalar(),
                     notes=f"Initial seed assignment for {role_name}"
                 )
                 db.add(role_assignment)
