@@ -1,12 +1,31 @@
+# OS files
 .DS_Store
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.db
 .pytest_cache/
 .venv/
+venv/
+*.egg-info/
+
+# Environment files
 .env
+.env.local
 .env.development
-.env.production  
+.env.production
 .env.tunnel
-*.env.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test databases
+test.db
+*.sqlite
+*.sqlite3
