@@ -5,6 +5,16 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
+import { GalleryVerticalEnd } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 const DEMO_ACCOUNTS = [
   {
@@ -78,106 +88,87 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-          HRM System
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-700">
-          Sign in to your account
-        </p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </label>
-              <div className="mt-1">
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter username"
-                />
+    <div className="flex flex-col gap-6">
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xl">Welcome back!</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit}>
+            <div className="grid gap-6">
+              <div className="grid gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="Enter username"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <div className="flex items-center">
+                    <Label htmlFor="password">Password</Label>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                  />
+                </div>
+                {error && (
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                    <p className="text-sm text-destructive">{error}</p>
+                  </div>
+                )}
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Signing in...' : 'Login'}
+                </Button>
               </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter password"
-                />
+              <div className="text-center text-sm">
+                Or choose a test account below
               </div>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3">
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
-
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? 'Signing in...' : 'Sign in'}
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-8">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-700">Demo Accounts</span>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-3">
               {DEMO_ACCOUNTS.map((account) => (
                 <button
                   key={account.username}
                   onClick={() => handleDemoLogin(account)}
                   disabled={isLoading}
-                  className="w-full text-left p-3 border border-gray-200 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="w-full text-left p-3 border rounded-md hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 transition-colors"
                 >
-                  <div className="font-medium text-gray-900">{account.role}</div>
-                  <div className="text-sm text-gray-700">{account.description}</div>
+                  <div className="font-medium">{account.role}</div>
+                  <div className="text-sm text-muted-foreground">{account.description}</div>
                 </button>
               ))}
+              <div className="mt-6 space-y-3">
             </div>
-          </div>
-        </div>
-      </div>
+            </div>
+          </form>
+      </CardContent>
+    </Card>
+           
     </div>
-  );
+  )
 }
 
 export default function LoginPage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <LoginForm />
+    <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+      <div className="flex w-full max-w-sm flex-col gap-6">
+        <a href="#" className="flex items-center gap-2 self-center font-medium">
+          <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+            <GalleryVerticalEnd className="size-4" />
+          </div>
+          HRM System Inc.
+        </a>
+        <LoginForm />
+      </div>
+    </div>
     </Suspense>
-  );
+  )
 }

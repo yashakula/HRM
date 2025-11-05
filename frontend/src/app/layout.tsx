@@ -26,13 +26,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
           <AuthChecker>
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen">
               <Navbar />
               <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 {children}
