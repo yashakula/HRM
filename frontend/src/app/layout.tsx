@@ -32,11 +32,13 @@ export default function RootLayout({
       >
         <Providers>
           <AuthChecker>
-            <div className="min-h-screen">
+            <div className="relative flex min-h-screen flex-col">
               <Navbar />
-              <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-                {children}
-              </main>
+              <div className="flex-1">
+                <main className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                  {children}
+                </main>
+              </div>
             </div>
           </AuthChecker>
         </Providers>

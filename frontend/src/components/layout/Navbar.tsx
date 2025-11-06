@@ -132,22 +132,20 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-card shadow border-b border-border" ref={dropdownRef}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          {/* Left side - Logo and Navigation */}
-          <div className="flex items-center space-x-8">
-            <Link
-              href={userHomePage}
-              className="text-xl font-bold text-foreground"
-            >
-              HRM System
-            </Link>
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60" ref={dropdownRef}>
+      <div className="container mx-auto flex h-14 max-w-screen-2xl items-center px-4">
+        <div className="mr-4 flex">
+          <Link
+            href={userHomePage}
+            className="mr-6 flex items-center space-x-2 font-bold text-foreground"
+          >
+            HRM System
+          </Link>
 
-            {/* Main Navigation - Desktop */}
-            {!isMobile && (
-              <NavigationMenu viewport={false}>
-                <NavigationMenuList>
+          {/* Main Navigation - Desktop */}
+          {!isMobile && (
+            <NavigationMenu>
+              <NavigationMenuList>
                   {navigationGroups.map((group) => {
                     // For single-item groups, render as direct link
                     if (group.items.length === 1) {
@@ -156,7 +154,6 @@ export default function Navbar() {
                         <NavigationMenuItem key={group.key}>
                           <Link href={item.path} legacyBehavior passHref>
                             <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                              <span className="mr-2">{group.icon}</span>
                               {group.title}
                             </NavigationMenuLink>
                           </Link>
@@ -168,22 +165,20 @@ export default function Navbar() {
                     return (
                       <NavigationMenuItem key={group.key}>
                         <NavigationMenuTrigger>
-                          <span className="mr-2">{group.icon}</span>
                           {group.title}
                         </NavigationMenuTrigger>
                         <NavigationMenuContent>
-                          <ul className="grid w-[300px] gap-4 p-4">
+                          <ul className="grid w-[300px] gap-2 p-2">
                             {group.items.map((item) => (
                               <li key={item.path}>
                                 <NavigationMenuLink asChild>
                                   <Link
                                     href={item.path}
                                     className={cn(
-                                      "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                                      "block select-none rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
                                     )}
                                   >
-                                    <div className="font-medium flex items-center">
-                                      {item.icon && <span className="mr-2">{item.icon}</span>}
+                                    <div className="font-medium text-sm">
                                       {item.title}
                                     </div>
                                   </Link>
@@ -195,13 +190,14 @@ export default function Navbar() {
                       </NavigationMenuItem>
                     );
                   })}
-                </NavigationMenuList>
-              </NavigationMenu>
-            )}
-          </div>
+              </NavigationMenuList>
+            </NavigationMenu>
+          )}
+        </div>
 
-          {/* Right side - User Profile Dropdown */}
-          <div className="flex items-center">
+        {/* Right side - User Profile Dropdown */}
+        <div className="flex flex-1 items-center justify-end space-x-2">
+          <nav className="flex items-center">
             <div className="relative">
               <button
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
@@ -264,12 +260,13 @@ export default function Navbar() {
                 </div>
               )}
             </div>
-          </div>
+          </nav>
         </div>
+      </div>
 
-        {/* Mobile navigation menu */}
-        {isMobile && (
-          <div className="pb-3 space-y-1">
+      {/* Mobile navigation menu */}
+      {isMobile && (
+        <div className="container pb-3 space-y-1 border-t border-border/40">
             {navigationGroups.map((group) => (
               <div key={group.key}>
                 {group.items.length === 1 ? (
@@ -299,9 +296,8 @@ export default function Navbar() {
                 )}
               </div>
             ))}
-          </div>
-        )}
-      </div>
-    </nav>
+        </div>
+      )}
+    </header>
   );
 }
