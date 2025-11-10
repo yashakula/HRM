@@ -5,6 +5,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { departmentApi, Department, DepartmentCreate, DepartmentUpdate } from '@/lib/api/departments';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { ActionButton, useUIPermissions } from '@/components/auth/ConditionalRender';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Edit, Trash2 } from "lucide-react";
 
 export default function DepartmentsPage() {
   return (
@@ -176,7 +184,8 @@ function DepartmentsContent() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading departments...</div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-2 text-muted-foreground">Loading departments...</p>
       </div>
     );
   }
@@ -184,370 +193,354 @@ function DepartmentsContent() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-red-600">Failed to load departments</div>
+        <div className="text-lg text-destructive">Failed to load departments</div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            🏢 Departments
-          </h1>
-          <p className="text-gray-800 mt-2">
-            Manage organizational departments and their information
-          </p>
-        </div>
-        
-        <ActionButton
-          action="create"
-          pageIdentifier="departments"
-        >
-          <button
-            onClick={() => setIsCreateDialogOpen(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle>Departments</CardTitle>
+            <CardDescription>
+              Manage organizational departments and their information
+            </CardDescription>
+          </div>
+          <ActionButton
+            action="create"
+            pageIdentifier="departments"
           >
-            ➕ Add Department
-          </button>
-        </ActionButton>
-      </div>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              Add Department
+            </Button>
+          </ActionButton>
+        </CardHeader>
+      </Card>
 
       {!showIf('create') && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-blue-800">
-            You have read-only access to departments. Contact HR Admin to make changes.
-          </p>
-        </div>
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <p className="text-sm text-blue-800">
+              You have read-only access to departments. Contact HR Admin to make changes.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {departments?.map((department) => (
-          <div key={department.department_id} className="bg-white p-6 rounded-lg shadow-md border">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">{department.name}</h3>
-                <span className="text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                  ID: {department.department_id}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <ActionButton
-                  action="edit"
-                  pageIdentifier="departments"
-                >
-                  <button
-                    onClick={() => handleEdit(department)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-                    title="Edit"
-                  >
-                    ✏️
-                  </button>
-                </ActionButton>
-                
-                <ActionButton
-                  action="delete"
-                  pageIdentifier="departments"
-                >
-                  <button
-                    onClick={() => handleDelete(department)}
-                    disabled={deleteMutation.isPending}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded"
-                    title="Delete"
-                  >
-                    🗑️
-                  </button>
-                </ActionButton>
-              </div>
-            </div>
-            <p className="text-gray-800 mb-3">
-              {department.description || 'No description provided'}
-            </p>
-            
-            <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Assignment Types:</h4>
-              {department.assignment_types && department.assignment_types.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {department.assignment_types.map((type) => (
-                    <span 
-                      key={type.assignment_type_id}
-                      className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                    >
-                      {type.description}
-                    </span>
-                  ))}
+          <Card key={department.department_id}>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <CardTitle>{department.name}</CardTitle>
+                  <Badge variant="secondary" className="text-xs">
+                    ID: {department.department_id}
+                  </Badge>
                 </div>
-              ) : (
-                <p className="text-gray-600 text-sm">No assignment types defined</p>
-              )}
-            </div>
-          </div>
+                <div className="flex gap-1">
+                  <ActionButton
+                    action="edit"
+                    pageIdentifier="departments"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(department)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </ActionButton>
+
+                  <ActionButton
+                    action="delete"
+                    pageIdentifier="departments"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(department)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </ActionButton>
+                </div>
+              </div>
+              <CardDescription>
+                {department.description || 'No description provided'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Assignment Types</h4>
+                {department.assignment_types && department.assignment_types.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {department.assignment_types.map((type) => (
+                      <Badge
+                        key={type.assignment_type_id}
+                        variant="outline"
+                      >
+                        {type.description}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No assignment types defined</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       {departments?.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">🏢</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No departments found</h3>
-          <p className="text-gray-700 mb-4">Get started by creating your first department</p>
-          {showIf('create') && (
-            <button
-              onClick={() => setIsCreateDialogOpen(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              ➕ Add Department
-            </button>
-          )}
-        </div>
+        <Card>
+          <CardContent className="text-center py-12">
+            <div className="text-6xl mb-4">🏢</div>
+            <h3 className="text-lg font-medium mb-2">No departments found</h3>
+            <p className="text-muted-foreground mb-4">Get started by creating your first department</p>
+            {showIf('create') && (
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                Add Department
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Create Dialog */}
-      {isCreateDialogOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Create New Department</h2>
-            <form onSubmit={handleCreate}>
-              <div className="mb-4">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Department Name *
-                </label>
-                <input
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Department</DialogTitle>
+            <DialogDescription>
+              Add a new department to your organization
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Department Name *</Label>
+                <Input
                   id="name"
-                  type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Engineering, Marketing"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="mb-4">
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Brief description of the department"
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assignment Types (Optional)
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
+
+              <div className="space-y-2">
+                <Label>Assignment Types (Optional)</Label>
+                <div className="flex gap-2">
+                  <Input
                     value={newAssignmentType}
                     onChange={(e) => setNewAssignmentType(e.target.value)}
                     placeholder="e.g., Software Engineer, Manager"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAssignmentType())}
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={addAssignmentType}
-                    className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
                   >
                     Add
-                  </button>
+                  </Button>
                 </div>
                 {formData.assignment_types && formData.assignment_types.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {formData.assignment_types.map((type, index) => (
-                      <span 
+                      <Badge
                         key={index}
-                        className="px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full flex items-center gap-1"
+                        variant="secondary"
+                        className="gap-1"
                       >
                         {type}
                         <button
                           type="button"
                           onClick={() => removeAssignmentType(index)}
-                          className="text-blue-600 hover:text-blue-800"
+                          className="hover:text-destructive"
                         >
                           ×
                         </button>
-                      </span>
+                      </Badge>
                     ))}
                   </div>
                 )}
               </div>
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsCreateDialogOpen(false);
-                    setNewAssignmentType('');
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {createMutation.isPending ? 'Creating...' : 'Create Department'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsCreateDialogOpen(false);
+                  setNewAssignmentType('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending ? 'Creating...' : 'Create Department'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
-      {isEditDialogOpen && editingDepartment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Edit Department</h2>
-            <form onSubmit={handleUpdate}>
-              <div className="mb-4">
-                <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Department Name *
-                </label>
-                <input
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Department</DialogTitle>
+            <DialogDescription>
+              Update department information and assignment types
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdate}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Department Name *</Label>
+                <Input
                   id="edit-name"
-                  type="text"
                   value={editFormData.name || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                   placeholder="e.g., Engineering, Marketing"
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="mb-4">
-                <label htmlFor="edit-description" className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
                   id="edit-description"
                   value={editFormData.description || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
                   placeholder="Brief description of the department"
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               {/* Current Assignment Types */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Current Assignment Types
-                </label>
-                {editingDepartment.assignment_types && editingDepartment.assignment_types.length > 0 ? (
+              <div className="space-y-2">
+                <Label>Current Assignment Types</Label>
+                {editingDepartment && editingDepartment.assignment_types && editingDepartment.assignment_types.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {editingDepartment.assignment_types.map((type) => {
                       const isMarkedForRemoval = editFormData.assignment_types_to_remove?.includes(type.assignment_type_id);
                       return (
-                        <span 
+                        <Badge
                           key={type.assignment_type_id}
-                          className={`px-2 py-1 text-sm rounded-full flex items-center gap-1 ${
-                            isMarkedForRemoval 
-                              ? 'bg-red-100 text-red-800 line-through' 
-                              : 'bg-gray-100 text-gray-800'
-                          }`}
+                          variant={isMarkedForRemoval ? "destructive" : "secondary"}
+                          className={`gap-1 ${isMarkedForRemoval ? 'line-through' : ''}`}
                         >
                           {type.description}
                           <button
                             type="button"
-                            onClick={() => isMarkedForRemoval 
+                            onClick={() => isMarkedForRemoval
                               ? unmarkAssignmentTypeForRemoval(type.assignment_type_id)
                               : markAssignmentTypeForRemoval(type.assignment_type_id)
                             }
-                            className={`text-sm hover:opacity-70 ${
-                              isMarkedForRemoval ? 'text-red-600' : 'text-gray-800'
-                            }`}
+                            className="hover:opacity-70"
                           >
                             {isMarkedForRemoval ? '↶' : '×'}
                           </button>
-                        </span>
+                        </Badge>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="text-gray-600 text-sm">No assignment types defined</p>
+                  <p className="text-sm text-muted-foreground">No assignment types defined</p>
                 )}
               </div>
-              
+
               {/* Add New Assignment Types */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Add New Assignment Types
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
+              <div className="space-y-2">
+                <Label>Add New Assignment Types</Label>
+                <div className="flex gap-2">
+                  <Input
                     value={newAssignmentType}
                     onChange={(e) => setNewAssignmentType(e.target.value)}
                     placeholder="e.g., Software Engineer, Manager"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAssignmentTypeToEdit())}
                   />
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={addAssignmentTypeToEdit}
-                    className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
                   >
                     Add
-                  </button>
+                  </Button>
                 </div>
                 {editFormData.assignment_types_to_add && editFormData.assignment_types_to_add.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {editFormData.assignment_types_to_add.map((type, index) => (
-                      <span 
+                      <Badge
                         key={index}
-                        className="px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full flex items-center gap-1"
+                        variant="default"
+                        className="gap-1 bg-green-600"
                       >
                         {type}
                         <button
                           type="button"
                           onClick={() => removeAssignmentTypeFromEdit(index)}
-                          className="text-green-600 hover:text-green-800"
+                          className="hover:opacity-70"
                         >
                           ×
                         </button>
-                      </span>
+                      </Badge>
                     ))}
                   </div>
                 )}
               </div>
-              
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditDialogOpen(false);
-                    setEditingDepartment(null);
-                    setEditFormData({ 
-                      name: '', 
-                      description: '', 
-                      assignment_types_to_add: [], 
-                      assignment_types_to_remove: [] 
-                    });
-                    setNewAssignmentType('');
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={updateMutation.isPending}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {updateMutation.isPending ? 'Updating...' : 'Update Department'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setEditingDepartment(null);
+                  setEditFormData({
+                    name: '',
+                    description: '',
+                    assignment_types_to_add: [],
+                    assignment_types_to_remove: []
+                  });
+                  setNewAssignmentType('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? 'Updating...' : 'Update Department'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

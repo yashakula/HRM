@@ -3,47 +3,43 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { apiClient } from '@/lib/api';
 import { EmployeeCreateRequest } from '@/lib/types';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PermissionGuard from '@/components/auth/PermissionGuard';
 import { SensitiveField, PermissionBasedSection } from '@/components/auth/ConditionalRender';
-
-// Form validation schema
-const employeeSchema = z.object({
-  // Person information
-  full_name: z.string().min(1, 'Full name is required'),
-  date_of_birth: z.string().optional(),
-  
-  // Personal information (optional)
-  personal_email: z.string().email('Invalid email format').optional().or(z.literal('')),
-  ssn: z.string().optional(),
-  bank_account: z.string().optional(),
-  
-  // Employee information
-  work_email: z.string().email('Invalid email format').optional().or(z.literal('')),
-  effective_start_date: z.string().optional(),
-  effective_end_date: z.string().optional(),
-});
-
-type EmployeeFormData = z.infer<typeof employeeSchema>;
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { DatePicker } from "@/components/ui/date-picker"
 
 export default function CreateEmployeePage() {
   return (
-    <ProtectedRoute 
-      pageIdentifier="employees/create" 
+    <ProtectedRoute
+      pageIdentifier="employees/create"
       requiredPermissions={['view', 'create']}
     >
-      <PermissionGuard 
+      <PermissionGuard
         permission="employee.create"
         fallback={
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🔒</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
-            <p className="text-gray-700">You don&apos;t have permission to create employees.</p>
+            <h3 className="text-lg font-medium mb-2">Access Denied</h3>
+            <p className="text-muted-foreground">You don&apos;t have permission to create employees.</p>
           </div>
         }
       >
@@ -56,22 +52,23 @@ export default function CreateEmployeePage() {
 function CreateEmployeeForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm<EmployeeFormData>({
-    resolver: zodResolver(employeeSchema),
-  });
+  const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>();
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [ssn, setSSN] = useState('');
+  const [confirmSSN, setConfirmSSN] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
+  const [confirmBankAccount, setConfirmBankAccount] = useState('');
+  const [workEmail, setWorkEmail] = useState('');
+  const [department, setDepartment] = useState('');
 
   const createEmployeeMutation = useMutation({
     mutationFn: (data: EmployeeCreateRequest) => apiClient.createEmployee(data),
     onSuccess: () => {
-      reset();
       setIsSubmitting(false);
-      // Redirect to employees page with success message
       router.push('/employees');
     },
     onError: (error) => {
@@ -80,28 +77,46 @@ function CreateEmployeeForm() {
     },
   });
 
-
-  const onSubmit = (data: EmployeeFormData) => {
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSubmitting(true);
+
+    // Validation
+    if (email !== confirmEmail) {
+      alert('Emails do not match');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (ssn !== confirmSSN) {
+      alert('SSN does not match');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (bankAccount !== confirmBankAccount) {
+      alert('Bank account numbers do not match');
+      setIsSubmitting(false);
+      return;
+    }
 
     // Transform form data to API format
     const employeeData: EmployeeCreateRequest = {
       person: {
-        full_name: data.full_name,
-        date_of_birth: data.date_of_birth || undefined,
+        full_name: `${firstName} ${lastName}`.trim(),
+        date_of_birth: dateOfBirth?.toISOString().split('T')[0],
       },
-      work_email: data.work_email || undefined,
-      effective_start_date: data.effective_start_date || undefined,
-      effective_end_date: data.effective_end_date || undefined,
+      work_email: workEmail || undefined,
+      effective_start_date: startDate?.toISOString().split('T')[0],
     };
 
     // Add personal information if any field is filled
-    const hasPersonalInfo = data.personal_email || data.ssn || data.bank_account;
+    const hasPersonalInfo = email || ssn || bankAccount;
     if (hasPersonalInfo) {
       employeeData.personal_information = {
-        personal_email: data.personal_email || undefined,
-        ssn: data.ssn || undefined,
-        bank_account: data.bank_account || undefined,
+        personal_email: email || undefined,
+        ssn: ssn || undefined,
+        bank_account: bankAccount || undefined,
       };
     }
 
@@ -109,208 +124,207 @@ function CreateEmployeeForm() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h1 className="text-2xl font-bold text-gray-900">Create New Employee Profile</h1>
-          <p className="mt-1 text-sm text-gray-700">
-            Add a new employee to the system
-          </p>
-        </div>
-      </div>
-
-      {/* Form */}
-      <div className="bg-white shadow rounded-lg">
-        <form onSubmit={handleSubmit(onSubmit)} className="px-4 py-5 sm:p-6">
-          <div className="space-y-8">
-            {/* Personal Information Section */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="full_name"
-                    {...register('full_name')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter full name"
+    <div>
+      <div className="w-full max-w-3xl mx-auto">
+        <form onSubmit={onSubmit}>
+          <FieldGroup>
+            <FieldSet>
+              <FieldLegend>Personal Information</FieldLegend>
+              <FieldGroup className="grid grid-cols-2 gap-4">
+                <Field>
+                  <FieldLabel htmlFor="first-name">First Name</FieldLabel>
+                  <Input
+                    id="first-name"
+                    placeholder="Enter First Name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
                   />
-                  {errors.full_name && (
-                    <p className="mt-1 text-sm text-red-600">{errors.full_name.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-700">
-                    Date of Birth
-                  </label>
-                  <input
-                    type="date"
-                    id="date_of_birth"
-                    {...register('date_of_birth')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="last-name">Last Name</FieldLabel>
+                  <Input
+                    id="last-name"
+                    placeholder="Enter Last Name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
                   />
-                  {errors.date_of_birth && (
-                    <p className="mt-1 text-sm text-red-600">{errors.date_of_birth.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="personal_email" className="block text-sm font-medium text-gray-700">
-                    Personal Email
-                  </label>
-                  <input
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="email">Email</FieldLabel>
+                  <Input
+                    id="email"
                     type="email"
-                    id="personal_email"
-                    {...register('personal_email')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="personal@example.com"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
                   />
-                  {errors.personal_email && (
-                    <p className="mt-1 text-sm text-red-600">{errors.personal_email.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Sensitive Information Section */}
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="confirmEmail">Confirm Email</FieldLabel>
+                  <Input
+                    id="confirmEmail"
+                    type="email"
+                    placeholder="Confirm Email"
+                    value={confirmEmail}
+                    onChange={(e) => setConfirmEmail(e.target.value)}
+                    required
+                  />
+                </Field>
+                <Field>
+                <DatePicker
+                  label="Date of Birth"
+                  id="date_of_birth"
+                  placeholder="Select date of birth"
+                  value={dateOfBirth}
+                  onChange={setDateOfBirth}
+                />
+              </Field>
+              </FieldGroup>
+              
+            </FieldSet>
             <PermissionBasedSection
               sectionType="hr_admin"
               title="Sensitive Information"
               description="Financial and identity information (HR Admin only)"
               fallback={
-                <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
-                  <p className="text-sm text-gray-600">
+                <div className="border border-border rounded-md p-4">
+                  <p className="text-sm">
                     Sensitive information fields are only visible to HR Administrators.
                   </p>
                 </div>
               }
             >
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <SensitiveField fieldType="ssn">
-                  <div>
-                    <label htmlFor="ssn" className="block text-sm font-medium text-gray-700">
-                      Social Security Number
-                    </label>
-                    <input
-                      type="text"
-                      id="ssn"
-                      {...register('ssn')}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="XXX-XX-XXXX"
-                    />
-                    {errors.ssn && (
-                      <p className="mt-1 text-sm text-red-600">{errors.ssn.message}</p>
-                    )}
-                  </div>
-                </SensitiveField>
-
-                <SensitiveField fieldType="bank_account">
-                  <div>
-                    <label htmlFor="bank_account" className="block text-sm font-medium text-gray-700">
-                      Bank Account
-                    </label>
-                    <input
-                      type="text"
-                      id="bank_account"
-                      {...register('bank_account')}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Account number"
-                    />
-                    {errors.bank_account && (
-                      <p className="mt-1 text-sm text-red-600">{errors.bank_account.message}</p>
-                    )}
-                  </div>
-                </SensitiveField>
-              </div>
+              <FieldSet>
+                {/* <FieldLegend>Sensitive Information</FieldLegend>
+                <FieldDescription>Financial and identity information (HR Admin only)</FieldDescription> */}
+                <FieldGroup className="grid grid-cols-2 gap-4">
+                  <SensitiveField fieldType="ssn">
+                    <Field>
+                      <FieldLabel htmlFor="ssn">SSN</FieldLabel>
+                      <Input
+                        id="ssn"
+                        placeholder="XXX-XX-XXXX"
+                        value={ssn}
+                        onChange={(e) => setSSN(e.target.value)}
+                      />
+                    </Field>
+                  </SensitiveField>
+                  <SensitiveField fieldType="ssn">
+                    <Field>
+                      <FieldLabel htmlFor="confirmSSN">Confirm SSN</FieldLabel>
+                      <Input
+                        id="confirmSSN"
+                        placeholder="XXX-XX-XXXX"
+                        value={confirmSSN}
+                        onChange={(e) => setConfirmSSN(e.target.value)}
+                      />
+                    </Field>
+                  </SensitiveField>
+                  <SensitiveField fieldType="bank_account">
+                    <Field>
+                      <FieldLabel htmlFor="bankAcc">Bank Account Number</FieldLabel>
+                      <Input
+                        id="bankAcc"
+                        placeholder="Account Number"
+                        value={bankAccount}
+                        onChange={(e) => setBankAccount(e.target.value)}
+                      />
+                    </Field>
+                  </SensitiveField>
+                  <SensitiveField fieldType="bank_account">
+                    <Field>
+                      <FieldLabel htmlFor="confirmBankAcc">Confirm Bank Account Number</FieldLabel>
+                      <Input
+                        id="confirmBankAcc"
+                        placeholder="Account Number"
+                        value={confirmBankAccount}
+                        onChange={(e) => setConfirmBankAccount(e.target.value)}
+                      />
+                    </Field>
+                  </SensitiveField>
+                </FieldGroup>
+              </FieldSet>
             </PermissionBasedSection>
 
-            {/* Employment Information Section */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Employment Information</h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <label htmlFor="work_email" className="block text-sm font-medium text-gray-700">
-                    Work Email
-                  </label>
-                  <input
-                    type="email"
-                    id="work_email"
-                    {...register('work_email')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="employee@company.com"
-                  />
-                  {errors.work_email && (
-                    <p className="mt-1 text-sm text-red-600">{errors.work_email.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="effective_start_date" className="block text-sm font-medium text-gray-700">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    id="effective_start_date"
-                    {...register('effective_start_date')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  {errors.effective_start_date && (
-                    <p className="mt-1 text-sm text-red-600">{errors.effective_start_date.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="effective_end_date" className="block text-sm font-medium text-gray-700">
-                    End Date (Optional)
-                  </label>
-                  <input
-                    type="date"
-                    id="effective_end_date"
-                    {...register('effective_end_date')}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  {errors.effective_end_date && (
-                    <p className="mt-1 text-sm text-red-600">{errors.effective_end_date.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
+            <FieldSet>
+              <FieldLegend>Employment Information</FieldLegend>
+              <FieldGroup className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel htmlFor="workEmail">Work Email</FieldLabel>
+                <Input
+                  id="workEmail"
+                  type="email"
+                  placeholder="employee@company.com"
+                  value={workEmail}
+                  onChange={(e) => setWorkEmail(e.target.value)}
+                  required
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Department</FieldLabel>
+                <Select value={department} onValueChange={setDepartment}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="engineering">Engineering</SelectItem>
+                    <SelectItem value="design">Design</SelectItem>
+                    <SelectItem value="marketing">Marketing</SelectItem>
+                    <SelectItem value="sales">Sales</SelectItem>
+                    <SelectItem value="support">Customer Support</SelectItem>
+                    <SelectItem value="hr">Human Resources</SelectItem>
+                    <SelectItem value="finance">Finance</SelectItem>
+                    <SelectItem value="operations">Operations</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  Select your department or area of work.
+                </FieldDescription>
+              </Field>
+              <Field>
+                <DatePicker
+                  label="Start Date"
+                  id="start_date"
+                  placeholder="Select start date"
+                  value={startDate}
+                  onChange={setStartDate}
+                />
+              </Field>
+            </FieldGroup>
+            </FieldSet>
 
             {/* Error Display */}
             {createEmployeeMutation.error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                <p className="text-red-600">
-                  Error creating employee: {createEmployeeMutation.error instanceof Error 
-                    ? createEmployeeMutation.error.message 
+              <div className="bg-destructive/10 border border-destructive/50 rounded-md p-4">
+                <p className="text-destructive text-sm">
+                  Error creating employee: {createEmployeeMutation.error instanceof Error
+                    ? createEmployeeMutation.error.message
                     : 'Unknown error'}
                 </p>
               </div>
             )}
 
             {/* Form Actions */}
-            <div className="flex justify-end space-x-4">
-              <button
+            <div className="flex justify-end gap-4">
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => router.push('/employees')}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Cancel
-              </button>
-              
-              <button
+              </Button>
+
+              <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Creating...' : 'Create Employee'}
-              </button>
+              </Button>
             </div>
-          </div>
+          </FieldGroup>
         </form>
       </div>
     </div>

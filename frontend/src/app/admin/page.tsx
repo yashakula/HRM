@@ -5,16 +5,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, AdminUser, UserRoleDistribution, SystemHealth } from '@/lib/api/admin';
 import { useHasPermission } from '@/store/authStore';
 import { UserRole } from '@/lib/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Users, UserCheck, Building2, Shield } from "lucide-react";
 
 export default function AdminPage() {
   const canManageUsers = useHasPermission('user.manage');
 
   if (!canManageUsers) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-red-600">You don&apos;t have permission to access the admin panel.</p>
-        </div>
+      <div className="space-y-6">
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <p className="text-destructive">You don&apos;t have permission to access the admin panel.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -24,7 +34,7 @@ export default function AdminPage() {
 
 function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'permissions'>('overview');
-  
+
   // System health data
   const { data: systemHealth, isLoading: healthLoading } = useQuery({
     queryKey: ['admin', 'health'],
@@ -39,70 +49,63 @@ function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h1 className="text-2xl font-bold text-gray-900">System Administration</h1>
-          <p className="mt-1 text-sm text-gray-700">
+      <Card>
+        <CardHeader>
+          <CardTitle>System Administration</CardTitle>
+          <CardDescription>
             Manage users, roles, and permissions across the HRM system
-          </p>
-        </div>
-      </div>
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
-      {/* Navigation Tabs */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
-            {[
-              { key: 'overview', label: 'System Overview' },
-              { key: 'users', label: 'User Management' },
-              { key: 'permissions', label: 'Permission Overview' },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as 'overview' | 'users' | 'permissions')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.key
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-        </div>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'overview' | 'users' | 'permissions')}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="permissions">Permissions</TabsTrigger>
+        </TabsList>
 
-        <div className="p-6">
-          {activeTab === 'overview' && (
-            <SystemOverview 
-              systemHealth={systemHealth} 
-              roleDistribution={roleDistribution}
-              loading={healthLoading || distributionLoading}
-            />
-          )}
-          {activeTab === 'users' && <UserManagement />}
-          {activeTab === 'permissions' && <PermissionOverview />}
-        </div>
-      </div>
+        <TabsContent value="overview" className="space-y-4">
+          <SystemOverview
+            systemHealth={systemHealth}
+            roleDistribution={roleDistribution}
+            loading={healthLoading || distributionLoading}
+          />
+        </TabsContent>
+
+        <TabsContent value="users" className="space-y-4">
+          <UserManagement />
+        </TabsContent>
+
+        <TabsContent value="permissions" className="space-y-4">
+          <PermissionOverview />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 
-function SystemOverview({ 
-  systemHealth, 
-  roleDistribution, 
-  loading 
-}: { 
-  systemHealth?: SystemHealth; 
+function SystemOverview({
+  systemHealth,
+  roleDistribution,
+  loading
+}: {
+  systemHealth?: SystemHealth;
   roleDistribution?: UserRoleDistribution;
   loading: boolean;
 }) {
   if (loading) {
     return (
-      <div className="animate-pulse space-y-4">
-        <div className="h-32 bg-gray-200 rounded"></div>
-        <div className="h-64 bg-gray-200 rounded"></div>
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="pt-6">
+                <div className="h-20 bg-muted rounded"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -111,112 +114,96 @@ function SystemOverview({
     <div className="space-y-6">
       {/* System Metrics */}
       {systemHealth && (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="bg-blue-50 overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">U</span>
-                  </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Users className="h-6 w-6 text-blue-600" />
                 </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Total Users</dt>
-                    <dd className="text-lg font-medium text-gray-900">{systemHealth.total_users}</dd>
-                  </dl>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Users</p>
+                  <p className="text-2xl font-bold">{systemHealth.total_users}</p>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-green-50 overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">A</span>
-                  </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <UserCheck className="h-6 w-6 text-green-600" />
                 </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Active Users</dt>
-                    <dd className="text-lg font-medium text-gray-900">{systemHealth.active_users}</dd>
-                  </dl>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Active Users</p>
+                  <p className="text-2xl font-bold">{systemHealth.active_users}</p>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-purple-50 overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">E</span>
-                  </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Building2 className="h-6 w-6 text-purple-600" />
                 </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Employees</dt>
-                    <dd className="text-lg font-medium text-gray-900">{systemHealth.total_employees}</dd>
-                  </dl>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Employees</p>
+                  <p className="text-2xl font-bold">{systemHealth.total_employees}</p>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-yellow-50 overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">P</span>
-                  </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-4">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <Shield className="h-6 w-6 text-yellow-600" />
                 </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Permissions</dt>
-                    <dd className="text-lg font-medium text-gray-900">{systemHealth.permission_system.total_permissions}</dd>
-                  </dl>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Permissions</p>
+                  <p className="text-2xl font-bold">{systemHealth.permission_system.total_permissions}</p>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {/* Role Distribution */}
       {roleDistribution && (
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">User Role Distribution</h3>
+        <Card>
+          <CardHeader>
+            <CardTitle>User Role Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-4">
               {roleDistribution.role_distribution.map((roleData) => (
-                <div key={roleData.role} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex-shrink-0">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        roleData.role === UserRole.HR_ADMIN ? 'bg-red-100 text-red-800' :
-                        roleData.role === UserRole.SUPERVISOR ? 'bg-blue-100 text-blue-800' :
-                        roleData.role === UserRole.SUPER_USER ? 'bg-purple-100 text-purple-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {roleData.role.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900">
-                        {roleData.user_count} users ({roleData.percentage}%)
-                      </p>
-                    </div>
+                <div key={roleData.role} className="flex items-center justify-between gap-4">
+                  <div className="flex items-center space-x-3 flex-1">
+                    <Badge
+                      variant={
+                        roleData.role === UserRole.HR_ADMIN ? 'destructive' :
+                        roleData.role === UserRole.SUPERVISOR ? 'default' :
+                        roleData.role === UserRole.SUPER_USER ? 'secondary' :
+                        'outline'
+                      }
+                    >
+                      {roleData.role.replace('_', ' ')}
+                    </Badge>
+                    <p className="text-sm font-medium">
+                      {roleData.user_count} users ({roleData.percentage}%)
+                    </p>
                   </div>
-                  <div className="flex-shrink-0">
-                    <div className="w-32 bg-gray-200 rounded-full h-2">
-                      <div 
+                  <div className="w-32">
+                    <div className="w-full bg-secondary rounded-full h-2">
+                      <div
                         className={`h-2 rounded-full ${
-                          roleData.role === UserRole.HR_ADMIN ? 'bg-red-600' :
-                          roleData.role === UserRole.SUPERVISOR ? 'bg-blue-600' :
+                          roleData.role === UserRole.HR_ADMIN ? 'bg-destructive' :
+                          roleData.role === UserRole.SUPERVISOR ? 'bg-primary' :
                           roleData.role === UserRole.SUPER_USER ? 'bg-purple-600' :
                           'bg-green-600'
                         }`}
@@ -227,8 +214,8 @@ function SystemOverview({
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
@@ -273,133 +260,146 @@ function UserManagement() {
   };
 
   if (isLoading) {
-    return <div className="text-center py-4">Loading users...</div>;
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <p className="ml-2 text-muted-foreground">Loading users...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (error) {
-    return <div className="text-red-600 py-4">Error loading users: {error.message}</div>;
+    return (
+      <Card className="border-destructive">
+        <CardContent className="pt-6">
+          <p className="text-destructive">Error loading users: {error.message}</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex space-x-4">
-        <select
-          value={selectedRole}
-          onChange={(e) => setSelectedRole(e.target.value)}
-          className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        >
-          <option value="">All Roles</option>
-          <option value={UserRole.SUPER_USER}>Super User</option>
-          <option value={UserRole.HR_ADMIN}>HR Admin</option>
-          <option value={UserRole.SUPERVISOR}>Supervisor</option>
-          <option value={UserRole.EMPLOYEE}>Employee</option>
-        </select>
-      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Filter by role:</label>
+            <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value=" ">All Roles</SelectItem>
+                <SelectItem value={UserRole.SUPER_USER}>Super User</SelectItem>
+                <SelectItem value={UserRole.HR_ADMIN}>HR Admin</SelectItem>
+                <SelectItem value={UserRole.SUPERVISOR}>Supervisor</SelectItem>
+                <SelectItem value={UserRole.EMPLOYEE}>Employee</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Users Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                User
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Role
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Permissions
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {users?.map((user) => (
-              <tr key={user.user_id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{user.username}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-wrap gap-1">
-                    {user.roles.map(role => (
-                      <span key={role} className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        role === UserRole.HR_ADMIN ? 'bg-red-100 text-red-800' :
-                        role === UserRole.SUPERVISOR ? 'bg-blue-100 text-blue-800' :
-                        role === UserRole.SUPER_USER ? 'bg-purple-100 text-purple-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {role.replace('_', ' ')}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {user.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {user.permissions.length} permissions
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => handleRoleChange(user)}
-                    className="text-blue-600 hover:text-blue-900"
-                  >
-                    Change Role
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Permissions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users?.map((user) => (
+                <TableRow key={user.user_id}>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{user.username}</div>
+                      <div className="text-sm text-muted-foreground">{user.email}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {user.roles.map(role => (
+                        <Badge
+                          key={role}
+                          variant={
+                            role === UserRole.HR_ADMIN ? 'destructive' :
+                            role === UserRole.SUPERVISOR ? 'default' :
+                            role === UserRole.SUPER_USER ? 'secondary' :
+                            'outline'
+                          }
+                        >
+                          {role.replace('_', ' ')}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={user.is_active ? 'default' : 'destructive'}>
+                      {user.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {user.permissions.length} permissions
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRoleChange(user)}
+                    >
+                      Change Role
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Role Change Modal */}
-      {showRoleModal && selectedUser && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
-              Change Role for {selectedUser.username}
-            </h3>
-            <div className="space-y-4">
-              {Object.values(UserRole).map((role) => (
-                <button
-                  key={role}
-                  onClick={() => confirmRoleChange(role)}
-                  disabled={selectedUser.roles.includes(role) || updateRoleMutation.isPending}
-                  className={`w-full text-left px-4 py-2 rounded border ${
-                    selectedUser.roles.includes(role) 
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-white hover:bg-gray-50 border-gray-300'
-                  }`}
-                >
-                  {role.replace('_', ' ')} {selectedUser.roles.includes(role) && '(Current)'}
-                </button>
-              ))}
-            </div>
-            <div className="flex justify-end space-x-2 mt-6">
-              <button
-                onClick={() => setShowRoleModal(false)}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+      <Dialog open={showRoleModal} onOpenChange={setShowRoleModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Role</DialogTitle>
+            <DialogDescription>
+              Change role for {selectedUser?.username}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            {Object.values(UserRole).map((role) => (
+              <Button
+                key={role}
+                onClick={() => confirmRoleChange(role)}
+                disabled={selectedUser?.roles.includes(role) || updateRoleMutation.isPending}
+                variant={selectedUser?.roles.includes(role) ? "secondary" : "outline"}
+                className="w-full justify-start"
               >
-                Cancel
-              </button>
-            </div>
+                {role.replace('_', ' ')} {selectedUser?.roles.includes(role) && '(Current)'}
+              </Button>
+            ))}
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRoleModal(false)}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -431,59 +431,80 @@ function PermissionOverview() {
   });
 
   if (isLoading) {
-    return <div className="text-center py-4">Loading permissions...</div>;
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <p className="ml-2 text-muted-foreground">Loading permissions...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <div className="space-y-6">
       {/* Permission Summary */}
       {permissions && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Permission Summary</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{permissions.total_permissions}</div>
-              <div className="text-sm text-gray-500">Total Permissions</div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Permission Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600">{permissions.total_permissions}</div>
+                <div className="text-sm text-muted-foreground">Total Permissions</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600">{Object.keys(permissions.permission_groups).length}</div>
+                <div className="text-sm text-muted-foreground">Resource Types</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-purple-600">4</div>
+                <div className="text-sm text-muted-foreground">User Roles</div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{Object.keys(permissions.permission_groups).length}</div>
-              <div className="text-sm text-gray-500">Resource Types</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">4</div>
-              <div className="text-sm text-gray-500">User Roles</div>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Role Permission Matrix */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Role Permission Comparison</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {[
-            { role: UserRole.SUPER_USER, data: superUserPermissions, color: 'purple' },
-            { role: UserRole.HR_ADMIN, data: hrPermissions, color: 'red' },
-            { role: UserRole.SUPERVISOR, data: supervisorPermissions, color: 'blue' },
-            { role: UserRole.EMPLOYEE, data: employeePermissions, color: 'green' }
-          ].map(({ role, data, color }) => (
-            <div key={role} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium text-gray-900">{role.replace('_', ' ')}</h4>
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-${color}-100 text-${color}-800`}>
-                  {data?.permission_count || 0} permissions
-                </span>
-              </div>
-              {data?.permission_groups && Object.entries(data.permission_groups).map(([resource, perms]) => (
-                <div key={resource} className="mb-2">
-                  <div className="text-sm font-medium text-gray-700 capitalize">{resource}</div>
-                  <div className="text-xs text-gray-500">{perms.length} permissions</div>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Role Permission Comparison</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {[
+              { role: UserRole.SUPER_USER, data: superUserPermissions, variant: 'secondary' as const },
+              { role: UserRole.HR_ADMIN, data: hrPermissions, variant: 'destructive' as const },
+              { role: UserRole.SUPERVISOR, data: supervisorPermissions, variant: 'default' as const },
+              { role: UserRole.EMPLOYEE, data: employeePermissions, variant: 'outline' as const }
+            ].map(({ role, data, variant }) => (
+              <Card key={role}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{role.replace('_', ' ')}</CardTitle>
+                    <Badge variant={variant}>
+                      {data?.permission_count || 0}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {data?.permission_groups && Object.entries(data.permission_groups).map(([resource, perms]) => (
+                    <div key={resource} className="mb-3">
+                      <div className="text-sm font-medium capitalize">{resource}</div>
+                      <div className="text-xs text-muted-foreground">{perms.length} permissions</div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
